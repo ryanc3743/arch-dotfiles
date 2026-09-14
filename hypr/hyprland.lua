@@ -50,23 +50,70 @@ local terminal    = "kitty"
 local fileManager = "dolphin"
 local menu        = "wofi"
 
+local workspaceHomes = {
+    { id = 1, monitor = "DP-3", label = "Development" },
+    { id = 2, monitor = "DP-3", label = "Web" },
+    { id = 3, monitor = "DP-3", label = "Files" },
+    { id = 4, monitor = "DP-2", label = "Game" },
+    { id = 5, monitor = "DP-2", label = "Steam" },
+    { id = 6, monitor = "DP-2", label = "Wallpaper Picker" },
+    { id = 7, monitor = "HDMI-A-1", label = "Media" },
+    { id = 8, monitor = "HDMI-A-1", label = "Misc" },
+    { id = 9, monitor = "HDMI-A-1", label = "Overflow" },
+}
+
+for _, home in ipairs(workspaceHomes) do
+    hl.workspace_rule({
+        workspace  = tostring(home.id),
+        monitor    = home.monitor,
+        persistent = true,
+        default    = home.id == 1 or home.id == 4 or home.id == 7,
+    })
+end
+
+-- Application homes. Kitty is intentionally not included because it hosts
+-- several unrelated applications and sessions on this machine.
+local applicationHomes = {
+    { name = "VS Code",          selector = "class:code",           workspace = 1 },
+    { name = "Firefox",          selector = "class:firefox",        workspace = 2 },
+    { name = "Dolphin",          selector = "class:org.kde.dolphin", workspace = 3 },
+    { name = "Steam",            selector = "class:steam",           workspace = 5 },
+    { name = "Steam games",      selector = "class:steam_app_.*",    workspace = 4 },
+    { name = "CurseForge",       selector = "class:CurseForge",       workspace = 7 },
+    { name = "CurseForge XWayland", selector = "class:curseforge",    workspace = 7 },
+    { name = "Wallpaper picker", selector = "class:org.quickshell", title = "Wallpaper Picker", workspace = 6 },
+}
+
+for _, app in ipairs(applicationHomes) do
+    hl.window_rule({
+        name      = "home-" .. app.name:lower():gsub("[^%w]+", "-"),
+        match     = { class = app.selector:gsub("^class:", ""), title = app.title },
+        workspace = tostring(app.workspace),
+    })
+end
+
 
 -------------------
 ---- AUTOSTART ----
 -------------------
+
+hl.window_rule({
+    name = "desktop-dialogs",
+    match = { class = "org.quickshell", title = "(Wallpaper Picker|Bar settings|Applications|Audio outputs|Network & Bluetooth)" },
+    float = true,
+})
 
 -- See https://wiki.hypr.land/Configuring/Basics/Autostart/
 
 -- Autostart necessary processes (like notifications daemons, status bars, etc.)
 -- Or execute your favorite apps at launch like this:
 --
--- hl.on("hyprland.start", function () 
---   hl.exec_cmd(terminal)
---   hl.exec_cmd("nm-applet")
---   hl.exec_cmd("quickshell & hyprpaper & firefox")
---   hl.exec_cmd("mako & dolphin & kitty & pipewire)
--- end)
+hl.on("hyprland.start", function()
+    -- Import this compositor session before starting the supervised desktop bar.
+    hl.exec_cmd("bash /home/ry/.config/linux-config/start-desktop.sh")
+    -- The user services own one text and one image watcher; the picker remains on-demand.
 
+end)
 
 -------------------------------
 ---- ENVIRONMENT VARIABLES ----
@@ -278,6 +325,23 @@ local closeWindowBind = hl.bind(mainMod .. " + w", hl.dsp.window.close())
 -- closeWindowBind:set_enabled(false)
 hl.bind(mainMod .. " + m", hl.dsp.exec_cmd("command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch 'hl.dsp.exit()'"))
 hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(fileManager))
+-- Native Quickshell application launcher. Wofi remains available as a fallback.
+hl.bind(mainMod .. " + SHIFT + D", hl.dsp.exec_cmd("quickshell ipc -p ~/.config/quickshell call launcher open"))
+-- SUPER+SPACE remains the Wofi fallback launcher.
+hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd("wofi --show drun"))
+-- Open the native network/Bluetooth panel.
+hl.bind(mainMod .. " + K", hl.dsp.exec_cmd("quickshell ipc -p ~/.config/quickshell call connectivity open"))
+-- Clipboard picker; remains a no-op with an explanatory notification until cliphist is installed.
+hl.bind(mainMod .. " + SHIFT + V", hl.dsp.exec_cmd("if command -v cliphist >/dev/null 2>&1; then cliphist list | wofi --dmenu --prompt Clipboard | cliphist decode | wl-copy; else notify-send 'Clipboard history unavailable' 'Install cliphist to enable it.'; fi"))
+-- Preserve Mako as notification owner; restore its most recent history item.
+hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("makoctl restore"))
+-- Screenshot gates; require grim/slurp and fail visibly when capture tools are absent.
+hl.bind(mainMod .. " + SHIFT + S", hl.dsp.exec_cmd("if command -v grim >/dev/null 2>&1; then mkdir -p \"$HOME/Pictures/Screenshots\"; grim \"$HOME/Pictures/Screenshots/$(date +%Y%m%d-%H%M%S).png\"; else notify-send 'Screenshot unavailable' 'Install grim to enable full-screen capture.'; fi"))
+hl.bind(mainMod .. " + SHIFT + A", hl.dsp.exec_cmd("if command -v grim >/dev/null 2>&1 && command -v slurp >/dev/null 2>&1; then mkdir -p \"$HOME/Pictures/Screenshots\"; grim -g \"$(slurp)\" \"$HOME/Pictures/Screenshots/$(date +%Y%m%d-%H%M%S).png\"; else notify-send 'Region screenshot unavailable' 'Install grim and slurp to enable it.'; fi"))
+hl.bind(mainMod .. " + B", hl.dsp.window.fullscreen({
+    mode = "fullscreen",
+    action = "toggle",
+}))
 hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
 hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit"))    -- dwindle only
@@ -296,13 +360,46 @@ for i = 1, 10 do
     hl.bind(mainMod .. " + SHIFT + " .. key,     hl.dsp.window.move({ workspace = i }))
 end
 
+-- Restore the fixed monitor/workspace arrangement and known application
+-- homes. This never closes windows.
+-- Shared by SUPER+SHIFT+R and the Quickshell reset button via hyprctl eval.
+function resetDesktopLayout()
+    for _, home in ipairs(workspaceHomes) do
+        hl.dispatch(hl.dsp.workspace.move({
+            workspace = tostring(home.id),
+            monitor   = home.monitor,
+        }))
+    end
+
+    -- Enumerate windows: a class selector alone can select only one instance.
+    for _, window in ipairs(hl.get_windows()) do
+        for _, app in ipairs(applicationHomes) do
+            local class = app.selector:gsub("^class:", "")
+            local matches = window.class == class or
+                (class == "steam_app_.*" and window.class:match("^steam_app_"))
+            if matches and (not app.title or window.title == app.title) then
+                hl.dispatch(hl.dsp.window.move({
+                    window    = window,
+                    workspace = tostring(app.workspace),
+                    follow    = false,
+                }))
+                break
+            end
+        end
+    end
+
+    hl.dispatch(hl.dsp.focus({ monitor = "DP-3" }))
+    hl.dispatch(hl.dsp.focus({ workspace = "1" }))
+end
+hl.bind(mainMod .. " + SHIFT + R", resetDesktopLayout, { description = "Reset desktop workspace layout" })
+
 -- Example special workspace (scratchpad)
 hl.bind(mainMod .. " + S",         hl.dsp.workspace.toggle_special("magic"))
 hl.bind(mainMod .. " + SHIFT + S", hl.dsp.window.move({ workspace = "special:magic" }))
 
 -- Scroll through existing workspaces with mainMod + scroll
-hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
-hl.bind(mainMod .. " + mouse_up",   hl.dsp.focus({ workspace = "e-1" }))
+hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "m+1" }))
+hl.bind(mainMod .. " + mouse_up",   hl.dsp.focus({ workspace = "m-1" }))
 
 -- Move/resize windows with mainMod + LMB/RMB and dragging
 hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
@@ -323,10 +420,6 @@ hl.bind("XF86AudioPlay",  hl.dsp.exec_cmd("playerctl play-pause"), { locked = tr
 hl.bind("XF86AudioPrev",  hl.dsp.exec_cmd("playerctl previous"),   { locked = true })
 
 
--- Launch Programs
-hl.bind(mainMod .. " + 1", hl.dsp.exec_cmd("firefox"))
-hl.bind(mainMod .. " + 2", hl.dsp.exec_cmd("flatpak run md.obsidian.Obsidian")) 
-hl.bind(mainMod .. " + 3", hl.dsp.exec_cmd("wofi --show drun"))
 --------------------------------
 ---- WINDOWS AND WORKSPACES ----
 --------------------------------
@@ -360,12 +453,6 @@ hl.window_rule({
     no_focus = true,
 })
 
-hl.window_rule({
-	match = {
-		class = "firefox",
-	},
-	workspace = "5",
-})
 -- Layer rules also return a handle.
 -- local overlayLayerRule = hl.layer_rule({
 --     name  = "no-anim-overlay",
@@ -382,53 +469,3 @@ hl.window_rule({
     move  = "20 monitor_h-120",
     float = true,
 })
-
-hl.workspace_rule({
-    workspace = "1",
-    monitor = "DP-2",
-    default = true,
-})
-
-hl.workspace_rule({
-    workspace = "2",
-    monitor = "DP-2",
-})
-
-hl.workspace_rule({
-    workspace = "3",
-    monitor = "DP-2",
-})
-
-hl.workspace_rule({
-    workspace = "4",
-    monitor = "DP-3",
-})
-
-hl.workspace_rule({
-    workspace = "5",
-    monitor = "DP-3",
-    default = true,
-})
-
-hl.workspace_rule({
-    workspace = "6",
-    monitor = "DP-3",
-})
-
-hl.workspace_rule({
-    workspace = "7",
-    monitor = "HDMI-A-1",
-})
-
-hl.workspace_rule({
-    workspace = "8",
-    monitor = "HDMI-A-1",
-    default = true,
-})
-
-hl.workspace_rule({
-    workspace = "9",
-    monitor = "HDMI-A-1",
-}) 
-
-

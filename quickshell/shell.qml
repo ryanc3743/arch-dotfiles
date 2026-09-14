@@ -1,44 +1,361 @@
 import Quickshell
+import Quickshell.Io
+import Quickshell.Hyprland
 import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 import "components"
 
 ShellRoot {
+    id: shell
+    AppSettings { id: barSettings }
+    Binding { target: Theme; property: "settings"; value: barSettings }
+    WorkspaceLayout { id: workspaceLayout }
+    AudioState { id: audioState }
+    ConnectivityState { id: connectivity }
+    DesktopActions {
+        id: desktop
+        appSettings: barSettings
+        onUtilityRequested: actionId => {
+            if (actionId === "wallpaper") {
+                wallpaperWindow.visible = true
+                desktop.focusWhenMapped(wallpaperWindow.title)
+            } else if (actionId === "settings") {
+                settingsWindow.visible = true
+                desktop.focusWhenMapped(settingsWindow.title)
+            } else if (actionId === "audio-outputs") {
+                audioWindow.visible = true
+                desktop.focusWhenMapped(audioWindow.title)
+            } else if (actionId === "connectivity") {
+                connectivityWindow.visible = true
+                desktop.focusWhenMapped(connectivityWindow.title)
+            } else if (actionId === "launcher") {
+                launcherWindow.visible = true
+                launcherView.prepare()
+                desktop.focusWhenMapped(launcherWindow.title)
+            }
+        }
+        onLastErrorChanged: if (lastError) console.error(lastError)
+    }
     Variants {
         model: Quickshell.screens
-
         PanelWindow {
+            id: panel
             required property var modelData
+            // Keep the 1080p side displays compact; the 1440p center display
+            // has room for media, tray, metrics, and remote controls.
+            property bool wideBar: panel.width >= 1800
             screen: modelData
-
-            anchors {
-                top: true
-                left: true
-                right: true
+            anchors { top: true; left: true; right: true }
+            implicitHeight: 64
+            margins { top: 0; bottom: 0; left: 0; right: 0 }
+            color: "transparent"
+            IpcHandler {
+                target: "bar-" + panel.screen.name
+                function description(open: bool): string {
+                    var dock = barContent.children.find(c => c.objectName === "main-taskbar")
+                    var row = dock.children[0]
+                    var button = row.children.find(c => c.objectName === "app-firefox")
+                    button.previewDescription = open
+                    return button.descriptionStatus()
+                }
+                function captureDescription(path: string): void {
+                    var dock = barContent.children.find(c => c.objectName === "main-taskbar")
+                    dock.children[0].children.find(c => c.objectName === "app-firefox").captureDescription(path)
+                }
+                function menu(open: bool): void { panel.contextMenuOpen = open }
+                function status(): string {
+                    return JSON.stringify({width: panel.width, height: panel.height, menu: contextMenu.visible,
+                        menuAnchor: contextMenu.anchor.window === panel,
+                        items: barContent.children.filter(c => c.visible && c.width > 0).map(c => ({x:c.x, width:c.width})),
+                        minimumWidth: barContent.implicitWidth,
+                        network: {centerY:connectivityButton.y+connectivityButton.height/2, iconSize:connectivityButton.contentItem.iconSize, color:connectivityButton.contentItem.color.toString()},
+                        launcher: {centerY:launcherButton.y+launcherButton.height/2, iconSize:launcherButton.contentItem.iconSize, color:launcherButton.contentItem.color.toString()}})
+                }
+                function captureMenu(path: string): void { menuSurface.grabToImage(r => r.saveToFile(path)) }
+                function capture(path: string): void {
+                    barContent.grabToImage(result => result.saveToFile(path))
+                }
             }
-
-            implicitHeight: 40
-
-Workspaces {
-    anchors.left: parent.left
-    anchors.leftMargin: 10
-    anchors.verticalCenter: parent.verticalCenter
-
-    workspaceList: {
-        if (modelData.name === "DP-3")
-            return [4, 5, 6]
-
-        if (modelData.name === "DP-2")
-            return [1, 2, 3]
-
-        if (modelData.name === "HDMI-A-1")
-            return [7, 8, 9]
-
-        return []
-    }
-}
-Clock {
-    anchors.centerIn: parent
-}            }
+            Rectangle {
+                anchors.fill: parent
+                z: -1
+                color: Qt.rgba(Qt.color(barSettings.surfaceColor).r, Qt.color(barSettings.surfaceColor).g, Qt.color(barSettings.surfaceColor).b, barSettings.panelOpacity)
+                ThemeBorder { visible: Theme.unified && barSettings.panelOpacity > 0; cornerRadius: 0 }
+            }
+            MouseArea {
+                id: barContextMouse
+                anchors.fill: parent
+                z: 100
+                acceptedButtons: Qt.RightButton
+                onClicked: event => { panel.contextMenuX = event.x; panel.contextMenuOpen = !panel.contextMenuOpen }
+            }
+            PopupWindow {
+                id: contextMenu
+                visible: panel.contextMenuOpen
+                anchor.window: panel
+                grabFocus: true
+                implicitWidth: 250
+                implicitHeight: 164
+                anchor.rect.x: Math.max(8, Math.min(panel.width - width - 8, panel.contextMenuX))
+                anchor.rect.y: panel.height + 6
+                anchor.edges: Edges.Top | Edges.Left
+                anchor.gravity: Edges.Bottom | Edges.Right
+                Rectangle {
+                    id: menuSurface
+                    anchors.fill: parent
+                    focus: true
+                    Keys.onEscapePressed: panel.contextMenuOpen = false
+                    color: barSettings.surfaceColor
+                    ThemeBorder {}
+                    Column {
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        spacing: 6
+                        StyledText { text: "BAR ACTIONS"; color: barSettings.accentColor; font.family: "monospace"; font.bold: true; font.pixelSize: 12 }
+                        Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Reload bar"; width: parent.width; onClicked: { panel.contextMenuOpen = false; reloadBar.running = true } }
+                        Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Bar settings"; width: parent.width; onClicked: { panel.contextMenuOpen = false; desktop.activate("settings") } }
+                        Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Reset desktop layout"; width: parent.width; onClicked: { panel.contextMenuOpen = false; desktop.activate("reset") } }
+                        Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Close"; width: parent.width; onClicked: panel.contextMenuOpen = false }
+                    }
+                }
+            }
+            HyprlandFocusGrab {
+                active: contextMenu.visible
+                windows: [contextMenu]
+                onCleared: panel.contextMenuOpen = false
+            }
+            Process {
+                id: reloadBar
+                command: ["systemctl", "--user", "--no-block", "restart", "desktop-bar.service"]
+                running: false
+            }
+            RowLayout {
+                id: barContent
+                anchors.fill: parent
+                anchors.leftMargin: 8
+                anchors.rightMargin: 8
+                spacing: 8
+                Workspaces {
+                    monitorGroups: workspaceLayout.monitorGroups
+                    actions: desktop
+                    compact: !panel.wideBar
+                    panelOpacity: barSettings.panelOpacity
+                    continuousStyle: true
+                }
+                Item { Layout.fillWidth: true }
+                Taskbar {
+                    objectName: "main-taskbar"
+                    appSettings: barSettings
+                    actions: desktop
+                    panelOpacity: barSettings.panelOpacity
+                    continuousStyle: true
+                }
+                MediaPill {
+                    visible: panel.wideBar
+                    panelOpacity: barSettings.panelOpacity
+                    continuousStyle: true
+                }
+                Item { Layout.fillWidth: true }
+                LauncherBar {
+                    appSettings: barSettings
+                    actions: desktop
+                    panelOpacity: barSettings.panelOpacity
+                    continuousStyle: true
+                }
+                AudioPill {
+                    visible: panel.wideBar
+                    panelOpacity: barSettings.panelOpacity
+                    continuousStyle: true
+                    onOutputsRequested: desktop.activate("audio-outputs")
+                }
+                ServiceStatus {
+                    visible: panel.wideBar
+                    panelOpacity: barSettings.panelOpacity
+                    continuousStyle: true
+                }
+                TrayPill {
+                    id: filteredTray
+                    visible: panel.wideBar && itemCount > 0
+                    panelOpacity: barSettings.panelOpacity
+                    continuousStyle: true
+                }
+                SystemPill {
+                    visible: panel.wideBar
+                    panelOpacity: barSettings.panelOpacity
+                    continuousStyle: true
+                }
+                ToolButton { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary;
+                    id: connectivityButton
+                    visible: panel.wideBar
+                    text: "⌁"
+                    Layout.preferredWidth: 88
+                    Layout.preferredHeight: 64
+                    Layout.alignment: Qt.AlignVCenter
+                    padding: 0
+                    font.pixelSize: 84
+                    contentItem: FluentIcon {
+                        name: connectivity.networkIcon
+                        iconSize: 56
+                        color: Theme.choose("#cdd6f4", "energy")
+                    }
+                    background: Rectangle {
+                        radius: 8
+                        color: connectivityButton.hovered ? Theme.secondary : "transparent"
+                        border.width: connectivityButton.hovered ? 1 : 0
+                        border.color: Theme.energy
+                    }
+                    Accessible.name: barSettings.description("connectivity")
+                    onClicked: desktop.activate("connectivity")
+                    ToolTip.visible: false
+                    ToolTip.text: barSettings.description("connectivity")
+                    DescriptionPopup {
+                        target: connectivityButton
+                        title: connectivity.networkStatus
+                        description: barSettings.description("connectivity")
+                        accentColor: barSettings.accentColor
+                        textColor: barSettings.textColor
+                        surfaceColor: barSettings.surfaceColor
+                        fontSize: barSettings.popupFontSize
+                        maxWidth: barSettings.popupMaxWidth
+                        borderWidth: barSettings.popupBorderWidth
+                    }
+                }
+                ToolButton { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary;
+                    id: launcherButton
+                    visible: panel.wideBar
+                    text: "⌕"
+                    Layout.preferredWidth: 72
+                    Layout.preferredHeight: 64
+                    Layout.alignment: Qt.AlignVCenter
+                    padding: 0
+                    font.pixelSize: 56
+                    contentItem: FluentIcon {
+                        name: "apps"
+                        iconSize: 48
+                        color: Theme.choose("#cdd6f4", "energy")
+                    }
+                    background: Rectangle {
+                        radius: 8
+                        color: launcherButton.hovered ? Theme.secondary : "transparent"
+                        border.width: launcherButton.hovered ? 1 : 0
+                        border.color: Theme.energy
+                    }
+                    Accessible.name: barSettings.description("launcher")
+                    onClicked: desktop.activate("launcher")
+                    ToolTip.visible: false
+                    ToolTip.text: barSettings.description("launcher")
+                    DescriptionPopup {
+                        target: launcherButton
+                        title: "Launcher"
+                        description: barSettings.description("launcher")
+                        accentColor: barSettings.accentColor
+                        textColor: barSettings.textColor
+                        surfaceColor: barSettings.surfaceColor
+                        fontSize: barSettings.popupFontSize
+                        maxWidth: barSettings.popupMaxWidth
+                        borderWidth: barSettings.popupBorderWidth
+                    }
+                }
+                Clock { panelOpacity: barSettings.panelOpacity; continuousStyle: true }
+            }
+            property bool contextMenuOpen: false
+            property real contextMenuX: 12
         }
     }
-
+    FloatingWindow {
+        id: wallpaperWindow
+        title: "Wallpaper Picker"
+        implicitWidth: 1000
+        implicitHeight: 700
+        visible: false
+        WallpaperPicker { id: wallpaperView; appSettings: barSettings }
+    }
+    FloatingWindow {
+        id: connectivityWindow
+        title: "Network & Bluetooth"
+        implicitWidth: 620
+        implicitHeight: 620
+        color: Theme.primary
+        visible: false
+        ConnectivityPanel { id: connectivityView; anchors.fill: parent; connectivity: connectivity; onCloseRequested: connectivityWindow.visible = false }
+    }
+    FloatingWindow {
+        id: launcherWindow
+        title: "Applications"
+        implicitWidth: 720
+        implicitHeight: 620
+        color: Theme.primary
+        visible: false
+        LauncherPanel { id: launcherView; anchors.fill: parent; onCloseRequested: launcherWindow.visible = false }
+    }
+    IconSettings {
+        id: settingsWindow
+        appSettings: barSettings
+    }
+    FloatingWindow {
+        id: audioWindow
+        title: "Audio outputs"
+        implicitWidth: 520
+        implicitHeight: 380
+        color: Theme.primary
+        visible: false
+        AudioOutputs { id: audioView; anchors.fill: parent; audio: audioState; onCloseRequested: audioWindow.visible = false }
+    }
+    IpcHandler {
+        target: "audio"
+        function status(): string {
+            return JSON.stringify({visible: audioWindow.visible, volume: audioState.volume,
+                muted: audioState.muted, current: audioState.sink ? audioState.sink.name : null,
+                outputs: audioState.outputs.map(node => ({name: node.name, label: audioState.label(node), ready: node.ready})),
+                error: audioState.error})
+        }
+        function hide(): void { audioWindow.visible = false }
+        function capture(path: string): void { audioView.grabToImage(result => result.saveToFile(path)) }
+    }
+    IpcHandler {
+        target: "connectivity"
+        function status(): string {
+            return JSON.stringify({icon: connectivity.networkIcon, status: connectivity.networkStatus, wifi: connectivity.networking.wifiEnabled,
+                wifiHardware: connectivity.networking.wifiHardwareEnabled,
+                wired: connectivity.wiredLabel, wifiLabel: connectivity.wifiLabel,
+                bluetooth: connectivity.adapter ? connectivity.adapter.enabled : false,
+                bluetoothLabel: connectivity.bluetoothLabel,
+                wifiNetworks: connectivity.wifiNetworks.length,
+                bluetoothDevices: connectivity.btDevices.length, error: connectivity.error})
+        }
+        function open(): void { connectivityWindow.visible = true }
+        function hide(): void { connectivityWindow.visible = false }
+        function capture(path: string): void { connectivityView.grabToImage(result => result.saveToFile(path)) }
+    }
+    IpcHandler {
+        target: "launcher"
+        function open(): void { launcherWindow.visible = true; launcherView.prepare(); desktop.focusWhenMapped(launcherWindow.title) }
+        function hide(): void { launcherWindow.visible = false }
+        function capture(path: string): void { launcherView.grabToImage(result => result.saveToFile(path)) }
+    }
+    // Also permits testing the same actions used by the buttons without key injection.
+    IpcHandler {
+        target: "appearance"
+        function colorways(): void { settingsWindow.showColorways() }
+        function wallpaperCapture(path: string): void { wallpaperView.capture(path) }
+        function open(): void { desktop.activate("settings") }
+        function picker(): void { settingsWindow.previewPicker() }
+        function capture(path: string): void { settingsWindow.capture(path) }
+        function hide(): void { settingsWindow.visible = false }
+    }
+    IpcHandler {
+        target: "desktop"
+        function activate(id: string): void { desktop.activate(id) }
+        function reset(): void { desktop.reset() }
+        function hideUtilities(): void { wallpaperWindow.visible = false; settingsWindow.visible = false; audioWindow.visible = false; connectivityWindow.visible = false; launcherWindow.visible = false }
+        function status(): string {
+            return JSON.stringify({
+                wallpaper: wallpaperWindow.visible, settings: settingsWindow.visible,
+                opacity: barSettings.panelOpacity, error: desktop.lastError,
+                pinned: barSettings.pinnedApps.map(e => e.id),
+                windows: barSettings.pinnedApps.map(e => ({id: e.id, count: desktop.windowsFor(e.id).length}))
+            })
+        }
+    }
+}

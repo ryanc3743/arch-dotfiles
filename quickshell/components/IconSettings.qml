@@ -1,0 +1,315 @@
+import QtQuick
+import QtQuick.Layouts
+import QtQuick.Controls
+import Quickshell
+import Quickshell.Io
+
+FloatingWindow {
+    id: settingsWindow
+    title: "Bar settings"
+    implicitWidth: 1000
+    implicitHeight: 820
+    color: settingsWindow.appSettings.surfaceColor
+    visible: false
+    required property var appSettings
+    function capture(path) { (pickingColor ? colorPage : settingsContent).grabToImage(r => r.saveToFile(path)) }
+    function showColorways() { editorScroll.contentItem.contentY = colorwayTitle.y }
+    function previewPicker() { selectedRole = "accentColor"; selectedRoleLabel = "Energy"; colorPage.selectedColor = draftTheme.accentColor; pickingColor = true }
+    property bool pickingColor: false
+    property bool savingTheme: false
+    property string selectedRole: "surfaceColor"
+    property string selectedRoleLabel: "Primary"
+    property string editingColorway: ""
+    function editColorway(preset) {
+        editingColorway = preset.name
+        presetName.text = preset.name
+        draftTheme = Object.assign({},draftTheme,preset.theme)
+        draftOpacity = preset.opacity === undefined ? 0.88 : preset.opacity
+        draftDisplay = Object.assign({},draftDisplay,preset.display || {})
+        draftTint = !!preset.tint
+        draftUnified = preset.unified !== false
+        draftFollow = !!preset.follow
+        draftWallpaperOutput = preset.wallpaperOutput || "DP-2"
+        editorScroll.contentItem.contentY = 0
+    }
+    property bool draftTint: true
+    property bool draftUnified: true
+    property bool draftFollow: false
+    property string draftWallpaperOutput: "DP-2"
+    property string paletteError: ""
+    property var draftIcons: ({})
+    property var draftDescriptions: ({})
+    property var draftTheme: ({ surfaceColor: "#1e1e2e", accentColor: "#cba6f7", textColor: "#cdd6f4", mutedColor: "#a6adc8" })
+    onDraftThemeChanged: {
+        var defaults = {tertiaryColor:"#45475a",detailAccentColor:"#89b4fa",textOutlineColor:"#11111b",
+            textStyle:0,borderStyle:"solid",borderWidth:1,borderRadius:8}
+        var missing = Object.keys(defaults).some(key => draftTheme[key] === undefined)
+        if (missing) draftTheme = Object.assign({},defaults,draftTheme)
+    }
+    property real draftOpacity: 0.88
+    property var draftDisplay: ({ popupFontSize: 12, popupMaxWidth: 300, popupBorderWidth: 2 })
+
+    onVisibleChanged: if (visible) {
+        pickingColor = false
+        savingTheme = false
+        editingColorway = ""
+        draftTint = appSettings.tintIcons
+        draftUnified = appSettings.unifiedTheme
+        draftFollow = appSettings.followWallpaper
+        draftWallpaperOutput = appSettings.wallpaperColorOutput
+        draftIcons = Object.assign({}, appSettings.overrides)
+        draftDescriptions = Object.assign({}, appSettings.descriptions)
+        draftTheme = { tertiaryColor: appSettings.tertiaryColor, detailAccentColor: appSettings.detailAccentColor, textOutlineColor: appSettings.textOutlineColor, textStyle: appSettings.textStyle, borderStyle: appSettings.borderStyle, borderWidth: appSettings.borderWidth, borderRadius: appSettings.borderRadius, secondaryColor: appSettings.secondaryColor, surfaceColor: appSettings.surfaceColor, accentColor: appSettings.accentColor, textColor: appSettings.textColor, mutedColor: appSettings.mutedColor }
+        draftOpacity = appSettings.panelOpacity
+        draftDisplay = { popupFontSize: appSettings.popupFontSize, popupMaxWidth: appSettings.popupMaxWidth, popupBorderWidth: appSettings.popupBorderWidth }
+    }
+    onClosed: colorPage.flushHistory()
+    Connections {
+        target: settingsWindow.appSettings
+        function onSaved() { if (settingsWindow.savingTheme) { settingsWindow.savingTheme = false; settingsWindow.visible = false } }
+    }
+    ColumnLayout {
+        id: settingsContent
+        visible: !settingsWindow.pickingColor
+        anchors.fill: parent
+        anchors.margins: 24
+        spacing: 10
+        StyledText { text: "Bar appearance & personality"; color: settingsWindow.appSettings.textColor; font.pixelSize: 26; font.bold: true }
+        StyledText { text: settingsWindow.editingColorway ? "Editing colorway: " + settingsWindow.editingColorway + " · Save colorway to keep your edits." : "Icons, colors, opacity, and the little descriptions shown when you hover."; color: settingsWindow.appSettings.mutedColor; font.pixelSize: 16 }
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 18
+        ScrollView {
+            id: editorScroll
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+            ColumnLayout {
+                width: editorScroll.availableWidth
+                spacing: 8
+                StyledText { text: "Desktop GUI colors"; color: Theme.energy; font.bold: true; font.pixelSize: 18 }
+                Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: settingsWindow.draftUnified ? "Apply to all ✓" : "Apply to all"; onClicked: settingsWindow.draftUnified = true }
+                CheckBox { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Match bar contents and GUI menus"; checked: settingsWindow.draftUnified; onToggled: settingsWindow.draftUnified = checked }
+                CheckBox { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Tint icons with Energy color"; checked: settingsWindow.draftTint; onToggled: settingsWindow.draftTint = checked }
+                Repeater {
+                    model: [{key:"surfaceColor",label:"Primary",hint:"Main surfaces"},
+                            {key:"secondaryColor",label:"Secondary",hint:"Panels and icon backgrounds"},
+                            {key:"accentColor",label:"Energy",hint:"Icons and animation"},
+                            {key:"tertiaryColor",label:"Tertiary",hint:"Hover and raised surfaces"},
+                            {key:"detailAccentColor",label:"Accent",hint:"Borders and selected controls"},
+                            {key:"textColor",label:"Text",hint:"Labels and readable content"},
+                            {key:"textOutlineColor",label:"Text Outline",hint:"Outline, raised and sunken text"}]
+                    RowLayout {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        Column {
+                            Layout.preferredWidth: 210
+                            StyledLabel { text: modelData.label; color: Theme.text; font.pixelSize: 17 }
+                            StyledLabel { text: modelData.hint; color: Theme.muted; font.pixelSize: 12 }
+                        }
+                        Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary;
+                            Layout.preferredWidth: 116; Layout.preferredHeight: 48
+                            Accessible.name: "Choose " + modelData.label + " color"
+                            background: Rectangle { color: settingsWindow.draftTheme[modelData.key] || "#313244"; radius: 4; border.color: Theme.text; border.width: 2 }
+                            onClicked: {
+                                settingsWindow.selectedRole = modelData.key
+                                settingsWindow.selectedRoleLabel = modelData.label
+                                colorPage.selectedColor = settingsWindow.draftTheme[modelData.key] || "#313244"
+                                colorPage.hue = Math.max(0,colorPage.selectedColor.hsvHue)
+                                settingsWindow.pickingColor = true
+                            }
+                        }
+                    }
+                }
+                RowLayout {
+                    StyledLabel { text: "Text effect"; color: Theme.text }
+                    ComboBox { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent;
+                        model: ["None","Outline","Raised","Sunken"]
+                        currentIndex: settingsWindow.draftTheme.textStyle || 0
+                        onActivated: settingsWindow.draftTheme = Object.assign({},settingsWindow.draftTheme,{textStyle:currentIndex})
+                    }
+                }
+                RowLayout {
+                    StyledLabel { text: "Borders"; color: Theme.text }
+                    ComboBox { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent;
+                        model: ["none","solid","dashed","dotted"]
+                        currentIndex: model.indexOf(settingsWindow.draftTheme.borderStyle || "solid")
+                        onActivated: settingsWindow.draftTheme = Object.assign({},settingsWindow.draftTheme,{borderStyle:currentText})
+                    }
+                    StyledLabel { text: "Width"; color: Theme.text }
+                    SpinBox { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; from: 0; to: 6; value: settingsWindow.draftTheme.borderWidth === undefined ? 1 : settingsWindow.draftTheme.borderWidth; onValueModified: settingsWindow.draftTheme = Object.assign({},settingsWindow.draftTheme,{borderWidth:value}) }
+                    StyledLabel { text: "Corners"; color: Theme.text }
+                    SpinBox { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; from: 0; to: 24; value: settingsWindow.draftTheme.borderRadius === undefined ? 8 : settingsWindow.draftTheme.borderRadius; onValueModified: settingsWindow.draftTheme = Object.assign({},settingsWindow.draftTheme,{borderRadius:value}) }
+                }
+                RowLayout {
+                    Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: paletteProcess.running ? "Extracting…" : "Match wallpaper"; enabled: !paletteProcess.running; onClicked: { settingsWindow.paletteError = ""; paletteProcess.running = true } }
+                    ComboBox { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; model: ["DP-2","DP-3","HDMI-A-1"]; currentIndex: model.indexOf(settingsWindow.draftWallpaperOutput); onActivated: settingsWindow.draftWallpaperOutput = currentText }
+                }
+                CheckBox { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Follow wallpaper changes"; checked: settingsWindow.draftFollow; onToggled: settingsWindow.draftFollow = checked }
+                StyledLabel { text: "Preview the selected monitor’s palette, then Save to apply."; color: Theme.muted }
+                StyledLabel { visible: settingsWindow.paletteError !== ""; text: settingsWindow.paletteError; color: "#f38ba8"; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                Rectangle {
+                    Layout.fillWidth: true; Layout.preferredHeight: 60
+                    color: settingsWindow.draftTheme.surfaceColor
+                    border.color: settingsWindow.draftTheme.accentColor; border.width: 2
+                    Row { anchors.centerIn: parent; spacing: 14
+                        Rectangle { width: 32; height: 32; radius: 6; color: settingsWindow.draftTheme.secondaryColor || "#313244"; border.color: settingsWindow.draftTheme.accentColor; border.width: 2 }
+                        StyledText { anchors.verticalCenter: parent.verticalCenter; text: "Your desktop palette"; color: settingsWindow.draftTheme.accentColor; font.bold: true }
+                    }
+                }
+                StyledText { id: colorwayTitle; text: "My Colorways"; color: Theme.text; font.bold: true; font.pixelSize: 20 }
+                Item {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Math.max(184,colorwayGrid.implicitHeight)
+                    Grid {
+                        id: colorwayGrid
+                        width: parent.width
+                        columns: width >= 540 ? 2 : 1
+                        spacing: 12
+                        Repeater {
+                            model: settingsWindow.appSettings.colorPresets
+                            ColorwayCard {
+                                required property var modelData
+                                width: (colorwayGrid.width-(colorwayGrid.columns-1)*colorwayGrid.spacing)/colorwayGrid.columns
+                                height: 184
+                                preset: modelData
+                                appSettings: settingsWindow.appSettings
+                                selected: settingsWindow.editingColorway === modelData.name
+                                onClicked: settingsWindow.editColorway(modelData)
+                            }
+                        }
+                    }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    TextField { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; id: presetName; Layout.fillWidth: true; placeholderText: "Name this colorway"; maximumLength: 40 }
+                    Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary;
+                        text: "Save colorway"
+                        enabled: presetName.text.trim().length > 0
+                        onClicked: settingsWindow.appSettings.saveNamedPreset(presetName.text, {
+                            theme:settingsWindow.draftTheme, opacity:settingsWindow.draftOpacity,
+                            display:settingsWindow.draftDisplay, tint:settingsWindow.draftTint,
+                            unified:settingsWindow.draftUnified, follow:settingsWindow.draftFollow,
+                            wallpaperOutput:settingsWindow.draftWallpaperOutput})
+                    }
+                }
+                Button {
+                    text: "Rename selected colorway"
+                    visible: settingsWindow.editingColorway !== ""
+                    enabled: presetName.text.trim().length > 0
+                    onClicked: {
+                        settingsWindow.appSettings.renamePreset(settingsWindow.editingColorway,presetName.text)
+                        if (!settingsWindow.appSettings.errorMessage) settingsWindow.editingColorway = presetName.text.trim()
+                    }
+                }
+                StyledText { text: "Pixel popout descriptions"; color: settingsWindow.appSettings.accentColor; font.bold: true; font.pixelSize: 18 }
+                Repeater {
+                    model: settingsWindow.appSettings.entries
+                    RowLayout {
+                        id: iconRow
+                        required property var modelData
+                        ThemedIcon { Layout.preferredWidth: 28; Layout.preferredHeight: 28; source: settingsWindow.appSettings.source(settingsWindow.draftIcons[iconRow.modelData.id] || iconRow.modelData.icon); fillMode: Image.PreserveAspectFit }
+                        StyledLabel { text: iconRow.modelData.label; color: settingsWindow.appSettings.textColor; Layout.preferredWidth: 145 }
+                        TextField { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary;
+                            objectName: "description-input-" + iconRow.modelData.id
+                            Layout.fillWidth: true
+                            placeholderText: settingsWindow.appSettings.defaultDescriptions[iconRow.modelData.id]
+                            text: settingsWindow.draftDescriptions[iconRow.modelData.id] || ""
+                            onTextEdited: { var descriptions = Object.assign({}, settingsWindow.draftDescriptions); descriptions[iconRow.modelData.id] = text; settingsWindow.draftDescriptions = descriptions }
+                        }
+                    }
+                }
+                StyledText { text: "Description display"; color: settingsWindow.appSettings.accentColor; font.bold: true; font.pixelSize: 18 }
+                RowLayout {
+                    StyledLabel { text: "Text size"; color: settingsWindow.appSettings.textColor }
+                    Slider { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; Layout.fillWidth: true; from: 10; to: 24; value: settingsWindow.draftDisplay.popupFontSize; onMoved: settingsWindow.draftDisplay = Object.assign({}, settingsWindow.draftDisplay, {popupFontSize: value}) }
+                    StyledLabel { text: Math.round(settingsWindow.draftDisplay.popupFontSize) + " px"; color: settingsWindow.appSettings.textColor }
+                }
+                RowLayout {
+                    StyledLabel { text: "Box width"; color: settingsWindow.appSettings.textColor }
+                    Slider { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; Layout.fillWidth: true; from: 180; to: 520; value: settingsWindow.draftDisplay.popupMaxWidth; onMoved: settingsWindow.draftDisplay = Object.assign({}, settingsWindow.draftDisplay, {popupMaxWidth: value}) }
+                    StyledLabel { text: Math.round(settingsWindow.draftDisplay.popupMaxWidth) + " px"; color: settingsWindow.appSettings.textColor }
+                }
+                RowLayout {
+                    StyledLabel { text: "Pixel border"; color: settingsWindow.appSettings.textColor }
+                    Slider { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; Layout.fillWidth: true; from: 1; to: 6; value: settingsWindow.draftDisplay.popupBorderWidth; onMoved: settingsWindow.draftDisplay = Object.assign({}, settingsWindow.draftDisplay, {popupBorderWidth: value}) }
+                    StyledLabel { text: Math.round(settingsWindow.draftDisplay.popupBorderWidth) + " px"; color: settingsWindow.appSettings.textColor }
+                }
+                RowLayout {
+                    StyledLabel { text: "Background opacity"; color: settingsWindow.appSettings.textColor }
+                    Slider { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; Layout.fillWidth: true; from: 0; to: 1; value: settingsWindow.draftOpacity; onMoved: settingsWindow.draftOpacity = value }
+                    StyledLabel { text: Math.round(settingsWindow.draftOpacity * 100) + "%"; color: settingsWindow.appSettings.textColor }
+                }
+                RowLayout {
+                    StyledLabel { text: "Presets"; color: settingsWindow.appSettings.textColor }
+                    Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Moon"; onClicked: settingsWindow.draftTheme = {secondaryColor: "#313244", surfaceColor: "#1e1e2e", accentColor: "#cba6f7", textColor: "#cdd6f4", mutedColor: "#a6adc8"} }
+                    Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Game Boy"; onClicked: settingsWindow.draftTheme = {secondaryColor: "#34472b", surfaceColor: "#1b281b", accentColor: "#9bbc0f", textColor: "#d8e8a8", mutedColor: "#6f8f3d"} }
+                    Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Charmander"; onClicked: settingsWindow.draftTheme = {secondaryColor: "#643426", surfaceColor: "#351b1b", accentColor: "#ff9f43", textColor: "#ffe0b2", mutedColor: "#d27d5f"} }
+                }
+            }
+        }
+            DesktopThemePreview {
+                Layout.preferredWidth: 300
+                Layout.fillHeight: true
+                theme: settingsWindow.draftTheme
+                appSettings: settingsWindow.appSettings
+                tintIcons: settingsWindow.draftTint
+                barOpacity: settingsWindow.draftOpacity
+            }
+        }
+        StyledText { text: settingsWindow.appSettings.errorMessage; color: "#f38ba8"; visible: text.length > 0 }
+        RowLayout {
+            Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Restore original colors"; onClicked: {
+                settingsWindow.draftUnified = false
+                settingsWindow.draftTint = false
+                settingsWindow.draftFollow = false
+                settingsWindow.draftTheme = {secondaryColor:"#313244",surfaceColor:"#1e1e2e",accentColor:"#cba6f7",textColor:"#cdd6f4",mutedColor:"#a6adc8"}
+                settingsWindow.draftOpacity = 0.88
+            } }
+            Item { Layout.fillWidth: true }
+            Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Cancel"; onClicked: settingsWindow.visible = false }
+            Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary;
+                objectName: "save-settings"
+                text: "Save"
+                onClicked: {
+                    settingsWindow.savingTheme = true
+                    var theme = Object.assign({}, settingsWindow.draftTheme, {unifiedTheme: settingsWindow.draftUnified, tintIcons: settingsWindow.draftTint,
+                        followWallpaper: settingsWindow.draftFollow, wallpaperColorOutput: settingsWindow.draftWallpaperOutput})
+                    var light = Qt.color(theme.surfaceColor).hslLightness > .55
+                    var energy = Qt.color(theme.accentColor)
+                    var hue = Math.max(0,energy.hslHue)
+
+                    if (settingsWindow.draftUnified) theme.mutedColor = Qt.hsla(hue, energy.hslSaturation * .25, light ? .28 : .72, 1).toString()
+                    settingsWindow.appSettings.save(settingsWindow.draftIcons, settingsWindow.draftOpacity, settingsWindow.draftDescriptions, theme, settingsWindow.draftDisplay)
+                }
+            }
+        }
+    }
+    ColorPickerPage {
+        id: colorPage
+        anchors.fill: parent
+        visible: settingsWindow.pickingColor
+        appSettings: settingsWindow.appSettings
+        roleKey: settingsWindow.selectedRole
+        roleLabel: settingsWindow.selectedRoleLabel
+        previewTheme: settingsWindow.draftTheme
+        leaveIconsDefault: !settingsWindow.draftTint
+        onIconModeChanged: leaveDefault => settingsWindow.draftTint = !leaveDefault
+        onCanceled: settingsWindow.pickingColor = false
+        onAccepted: value => {
+            var next = Object.assign({}, settingsWindow.draftTheme)
+            next[settingsWindow.selectedRole] = value.toString()
+            settingsWindow.draftTheme = next
+            settingsWindow.pickingColor = false
+        }
+    }
+    Process {
+        id: paletteProcess
+        command: ["python3", Qt.resolvedUrl("../scripts/wallpaper.py").toString().replace("file://", ""),
+            "palette", "--state", Quickshell.statePath("wallpaper-settings.json"), "--output", settingsWindow.draftWallpaperOutput]
+        stdout: StdioCollector { onStreamFinished: if (text.trim()) settingsWindow.draftTheme = Object.assign({},settingsWindow.draftTheme,JSON.parse(text)) }
+        stderr: StdioCollector { onStreamFinished: settingsWindow.paletteError = text.trim() }
+    }
+
+}
