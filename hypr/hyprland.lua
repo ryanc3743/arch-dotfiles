@@ -99,7 +99,7 @@ end
 
 hl.window_rule({
     name = "desktop-dialogs",
-    match = { class = "org.quickshell", title = "(Wallpaper Picker|Bar settings|Applications|Audio outputs|Network & Bluetooth)" },
+    match = { class = "org.quickshell", title = "(Wallpaper Picker|Bar settings|Applications|Expander Power|Audio outputs|Network & Bluetooth)" },
     float = true,
 })
 
@@ -318,6 +318,12 @@ hl.device({
 ---------------------
 
 local mainMod = "SUPER" -- Sets "Windows" key as main modifier
+
+-- Standalone Super gestures emitted by keyd. Existing Super combos stay intact.
+-- XKB maps evdev F13/F14 to XF86Tools/XF86Launch5 on this layout.
+-- Hyprland 0.56.2 Lua code:N binds parse as keycode 0; use the verified keysyms.
+hl.bind("XF86Tools", hl.dsp.exec_cmd("quickshell ipc -p ~/.config/quickshell call expander open"))
+hl.bind("XF86Launch5", hl.dsp.exec_cmd("quickshell ipc -p ~/.config/quickshell call expander power"))
 
 -- Example binds, see https://wiki.hypr.land/Configuring/Basics/Binds/ for more
 hl.bind(mainMod .. " + Q", hl.dsp.exec_cmd(terminal))
