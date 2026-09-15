@@ -60,6 +60,7 @@ FloatingWindow {
     function capture(path) { (pickingColor ? colorPage : settingsContent).grabToImage(r => r.saveToFile(path)) }
     function showDesktopPresets() { editorScroll.contentItem.contentY = desktopPresetTitle.y }
     function showColorways() { editorScroll.contentItem.contentY = colorwayTitle.y }
+    function showElementInspector() { editorScroll.contentItem.contentY = elementInspectorTitle.y }
     function previewPicker() { selectedRole = "accentColor"; selectedRoleLabel = "Energy"; colorPage.selectedColor = draftTheme.accentColor; pickingColor = true }
     property bool pickingColor: false
     property bool savingTheme: false
@@ -288,6 +289,31 @@ FloatingWindow {
                     onClicked: {
                         settingsWindow.appSettings.renamePreset(settingsWindow.editingColorway,presetName.text)
                         if (!settingsWindow.appSettings.errorMessage) settingsWindow.editingColorway = presetName.text.trim()
+                    }
+                }
+                StyledText { id: elementInspectorTitle; text: "Inspect element properties"; color: settingsWindow.appSettings.accentColor; font.bold: true; font.pixelSize: 18 }
+                StyledText { Layout.fillWidth: true; wrapMode: Text.Wrap; text: "Change a button's icon and the little line shown under it."; color: settingsWindow.appSettings.mutedColor }
+                Repeater {
+                    model: settingsWindow.appSettings.entries
+                    RowLayout {
+                        id: elementRow
+                        required property var modelData
+                        ThemedIcon { Layout.preferredWidth: 28; Layout.preferredHeight: 28; source: settingsWindow.appSettings.source(settingsWindow.draftIcons[elementRow.modelData.id] || elementRow.modelData.icon); fillMode: Image.PreserveAspectFit }
+                        StyledLabel { text: elementRow.modelData.label; color: settingsWindow.appSettings.textColor; Layout.preferredWidth: 145 }
+                        TextField { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary;
+                            objectName: "icon-input-" + elementRow.modelData.id
+                            Layout.preferredWidth: 200
+                            placeholderText: elementRow.modelData.icon
+                            text: settingsWindow.draftIcons[elementRow.modelData.id] || ""
+                            onTextEdited: { var icons = Object.assign({}, settingsWindow.draftIcons); if (!text.trim()) delete icons[elementRow.modelData.id]; else icons[elementRow.modelData.id] = text.trim(); settingsWindow.draftIcons = icons }
+                        }
+                        TextField { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary;
+                            objectName: "description-input-" + elementRow.modelData.id
+                            Layout.fillWidth: true
+                            placeholderText: settingsWindow.appSettings.defaultDescriptions[elementRow.modelData.id]
+                            text: settingsWindow.draftDescriptions[elementRow.modelData.id] || ""
+                            onTextEdited: { var descriptions = Object.assign({}, settingsWindow.draftDescriptions); descriptions[elementRow.modelData.id] = text; settingsWindow.draftDescriptions = descriptions }
+                        }
                     }
                 }
                 StyledText { text: "Pixel popout descriptions"; color: settingsWindow.appSettings.accentColor; font.bold: true; font.pixelSize: 18 }
