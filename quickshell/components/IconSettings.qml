@@ -6,13 +6,59 @@ import Quickshell.Io
 
 FloatingWindow {
     id: settingsWindow
-    title: "Bar settings"
+    DesktopEscapeShortcut { onClosing: colorPage.flushHistory() }
+    title: "Customization Center"
     implicitWidth: 1000
     implicitHeight: 820
     color: settingsWindow.appSettings.surfaceColor
     visible: false
     required property var appSettings
+    required property var presetStore
+    required property var wallpaperController
+    property var draftDesktopWallpaper: null
+    property bool includeDesktopWallpaper: true
+    property bool waitingForWallpaper: false
+    function desktopSnapshot() {
+        return {theme:draftTheme, opacity:draftOpacity, display:draftDisplay, tint:draftTint,
+            unified:draftUnified, follow:draftFollow, wallpaperOutput:draftWallpaperOutput,
+            icons:draftIcons, descriptions:draftDescriptions, wallpaper:includeDesktopWallpaper ? (draftDesktopWallpaper || wallpaperController.currentSnapshot()) : null}
+    }
+    function editDesktopPreset(preset) {
+        editColorway(preset)
+        editingColorway = ""
+        presetName.text = ""
+        draftIcons = Object.assign({}, preset.icons || {})
+        draftDescriptions = Object.assign({}, preset.descriptions || {})
+        includeDesktopWallpaper = !!preset.wallpaper
+        draftDesktopWallpaper = preset.wallpaper ? JSON.parse(JSON.stringify(preset.wallpaper)) : null
+    }
+    function applyDraft() {
+        if (waitingForWallpaper || savingTheme) return
+        if (draftDesktopWallpaper) {
+            waitingForWallpaper = true
+            if (!wallpaperController.applyPreset(draftDesktopWallpaper, false)) {
+                waitingForWallpaper = false
+                paletteError = wallpaperController.failure
+            }
+        } else commitStyle()
+    }
+    function commitStyle() {
+        savingTheme = true
+        var theme = Object.assign({}, draftTheme, {unifiedTheme:draftUnified, tintIcons:draftTint,
+            followWallpaper:draftFollow, wallpaperColorOutput:draftWallpaperOutput})
+        appSettings.save(draftIcons, draftOpacity, draftDescriptions, theme, draftDisplay)
+    }
+    Connections {
+        target: settingsWindow.wallpaperController
+        function onPresetApplied(success) {
+            if (!settingsWindow.waitingForWallpaper) return
+            settingsWindow.waitingForWallpaper = false
+            if (success) settingsWindow.commitStyle()
+            else settingsWindow.paletteError = settingsWindow.wallpaperController.failure
+        }
+    }
     function capture(path) { (pickingColor ? colorPage : settingsContent).grabToImage(r => r.saveToFile(path)) }
+    function showDesktopPresets() { editorScroll.contentItem.contentY = desktopPresetTitle.y }
     function showColorways() { editorScroll.contentItem.contentY = colorwayTitle.y }
     function previewPicker() { selectedRole = "accentColor"; selectedRoleLabel = "Energy"; colorPage.selectedColor = draftTheme.accentColor; pickingColor = true }
     property bool pickingColor: false
@@ -53,6 +99,9 @@ FloatingWindow {
         pickingColor = false
         savingTheme = false
         editingColorway = ""
+        draftDesktopWallpaper = null
+        includeDesktopWallpaper = true
+        desktopLibrary.fresh()
         draftTint = appSettings.tintIcons
         draftUnified = appSettings.unifiedTheme
         draftFollow = appSettings.followWallpaper
@@ -74,7 +123,11 @@ FloatingWindow {
         anchors.fill: parent
         anchors.margins: 24
         spacing: 10
-        StyledText { text: "Bar appearance & personality"; color: settingsWindow.appSettings.textColor; font.pixelSize: 26; font.bold: true }
+        RowLayout {
+            Layout.fillWidth: true
+            StyledText { text: "Desktop & bar appearance"; color: settingsWindow.appSettings.textColor; font.pixelSize: 26; font.bold: true; Layout.fillWidth: true }
+            ExpanderButton { text: "Desktop presets"; onClicked: settingsWindow.showDesktopPresets() }
+        }
         StyledText { text: settingsWindow.editingColorway ? "Editing colorway: " + settingsWindow.editingColorway + " · Save colorway to keep your edits." : "Icons, colors, opacity, and the little descriptions shown when you hover."; color: settingsWindow.appSettings.mutedColor; font.pixelSize: 16 }
         RowLayout {
             Layout.fillWidth: true
@@ -99,6 +152,7 @@ FloatingWindow {
                             {key:"tertiaryColor",label:"Tertiary",hint:"Hover and raised surfaces"},
                             {key:"detailAccentColor",label:"Accent",hint:"Borders and selected controls"},
                             {key:"textColor",label:"Text",hint:"Labels and readable content"},
+                            {key:"mutedColor",label:"Subtitle",hint:"Secondary labels and help text"},
                             {key:"textOutlineColor",label:"Text Outline",hint:"Outline, raised and sunken text"}]
                     RowLayout {
                         required property var modelData
@@ -157,6 +211,39 @@ FloatingWindow {
                         Rectangle { width: 32; height: 32; radius: 6; color: settingsWindow.draftTheme.secondaryColor || "#313244"; border.color: settingsWindow.draftTheme.accentColor; border.width: 2 }
                         StyledText { anchors.verticalCenter: parent.verticalCenter; text: "Your desktop palette"; color: settingsWindow.draftTheme.accentColor; font.bold: true }
                     }
+                }
+                StyledText { id: desktopPresetTitle; text: "My desktop presets"; color: Theme.text; font.bold: true; font.pixelSize: 20 }
+                StyledText { Layout.fillWidth: true; wrapMode: Text.Wrap; text: "Save colors, borders, icons, descriptions and opacity together. Attach wallpaper settings if you want the whole look."; color: Theme.muted }
+                PresetLibrary {
+                    id: desktopLibrary
+                    Layout.fillWidth: true
+                    store: settingsWindow.presetStore
+                    kind: "desktop"
+                    draft: settingsWindow.desktopSnapshot()
+                    onEditRequested: preset => settingsWindow.editDesktopPreset(preset)
+                }
+                CheckBox {
+                    text: "Include wallpaper setup"
+                    checked: settingsWindow.includeDesktopWallpaper
+                    palette.windowText: Theme.text
+                    onToggled: { settingsWindow.includeDesktopWallpaper = checked; settingsWindow.draftDesktopWallpaper = checked ? settingsWindow.wallpaperController.currentSnapshot() : null }
+                }
+                RowLayout {
+                    visible: settingsWindow.includeDesktopWallpaper
+                    Layout.fillWidth: true
+                    ComboBox {
+                        Layout.fillWidth: true
+                        model: settingsWindow.presetStore.wallpaperPresets
+                        textRole: "name"
+                        displayText: currentIndex >= 0 ? currentText : "Save wallpaper presets in Wallpaper Picker"
+                        palette.button: Theme.secondary; palette.buttonText: Theme.text
+                        onActivated: settingsWindow.draftDesktopWallpaper = JSON.parse(JSON.stringify(model[currentIndex]))
+                    }
+                    ExpanderButton { text: "Use current wallpaper"; onClicked: settingsWindow.draftDesktopWallpaper = settingsWindow.wallpaperController.currentSnapshot() }
+                }
+                StyledText {
+                    Layout.fillWidth: true; wrapMode: Text.Wrap; color: Theme.muted
+                    text: settingsWindow.includeDesktopWallpaper ? "Included: " + (settingsWindow.draftDesktopWallpaper?.name || "current wallpaper snapshot") + ". Main Save applies the desktop draft." : "Main Save applies your desktop draft. Preset edits stay separate until then."
                 }
                 StyledText { id: colorwayTitle; text: "My Colorways"; color: Theme.text; font.bold: true; font.pixelSize: 20 }
                 Item {
@@ -271,18 +358,9 @@ FloatingWindow {
             Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Cancel"; onClicked: settingsWindow.visible = false }
             Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary;
                 objectName: "save-settings"
-                text: "Save"
-                onClicked: {
-                    settingsWindow.savingTheme = true
-                    var theme = Object.assign({}, settingsWindow.draftTheme, {unifiedTheme: settingsWindow.draftUnified, tintIcons: settingsWindow.draftTint,
-                        followWallpaper: settingsWindow.draftFollow, wallpaperColorOutput: settingsWindow.draftWallpaperOutput})
-                    var light = Qt.color(theme.surfaceColor).hslLightness > .55
-                    var energy = Qt.color(theme.accentColor)
-                    var hue = Math.max(0,energy.hslHue)
-
-                    if (settingsWindow.draftUnified) theme.mutedColor = Qt.hsla(hue, energy.hslSaturation * .25, light ? .28 : .72, 1).toString()
-                    settingsWindow.appSettings.save(settingsWindow.draftIcons, settingsWindow.draftOpacity, settingsWindow.draftDescriptions, theme, settingsWindow.draftDisplay)
-                }
+                text: settingsWindow.waitingForWallpaper || settingsWindow.savingTheme ? "Applying…" : "Save"
+                enabled: !settingsWindow.waitingForWallpaper && !settingsWindow.savingTheme
+                onClicked: settingsWindow.applyDraft()
             }
         }
     }

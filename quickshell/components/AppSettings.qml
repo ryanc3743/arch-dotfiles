@@ -100,7 +100,7 @@ QtObject {
           command: ["/home/ry/Downloads/curseforge-latest-linux.AppImage"] },
         { id: "wallpaper", label: "Wallpaper picker", icon: "/usr/share/icons/breeze/preferences/32/preferences-desktop-wallpaper.svg" },
         { id: "notifications", label: "Notification history", icon: "/usr/share/icons/breeze/actions/24/notifications.svg" },
-        { id: "settings", label: "Bar settings", icon: "/usr/share/icons/breeze/apps/48/systemsettings.svg" },
+        { id: "settings", label: "Customization Center", icon: "/usr/share/icons/breeze/apps/48/systemsettings.svg" },
         { id: "reset", label: "Reset desktop layout", icon: "/usr/share/icons/breeze-dark/actions/32/view-refresh.svg" },
         { id: "connectivity", label: "Network and Bluetooth", icon: "/usr/share/icons/breeze/status/32/network-wired.svg" },
         { id: "launcher", label: "Application launcher", icon: "/usr/share/icons/breeze/apps/48/system-run.svg" }
@@ -114,7 +114,7 @@ QtObject {
         curseforge: "CurseForge, mod management with a little magic",
         wallpaper: "Wallpaper picker, repaint the universe",
         notifications: "Notification history, what did I miss?",
-        settings: "Bar settings, make this place yours",
+        settings: "Customization Center, make this place yours",
         reset: "Reset layout, the emergency tidy-up",
         connectivity: "Network and Bluetooth, wires and waves",
         launcher: "Application launcher, choose your next adventure"

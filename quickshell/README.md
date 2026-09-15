@@ -54,3 +54,7 @@ Use `systemctl --user restart desktop-bar.service` to restart that instance.
 Development IPC: `quickshell ipc -p ~/.config/quickshell call desktop status`.
 Utility/app actions use the same desktop activate ID handler internally.
 Bar snapshots: call target bar-DP-3, method capture, with a local PNG path.
+
+## Personalization
+
+See [saved desktop and wallpaper presets](PRESETS.md) and [Expander/window controls](EXPANDER.md).

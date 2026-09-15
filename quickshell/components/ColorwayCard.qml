@@ -19,6 +19,7 @@ Button {
         {label:"Energy",color:colors.accentColor || "#cba6f7"},
         {label:"Accent",color:colors.detailAccentColor || "#89b4fa"},
         {label:"Text",color:colors.textColor || "#cdd6f4"},
+        {label:"Subtitle",color:colors.mutedColor || "#a6adc8"},
         {label:"Text outline",color:colors.textOutlineColor || "#11111b"}
     ]
     implicitWidth: 260
@@ -79,7 +80,7 @@ Button {
                 model: card.swatches
                 Rectangle {
                     required property var modelData
-                    width: (swatchRow.width-18)/7; height: 27
+                    width: (swatchRow.width-(card.swatches.length-1)*swatchRow.spacing)/card.swatches.length; height: 27
                     color: modelData.color
                     border.color: Qt.rgba(card.ink.r,card.ink.g,card.ink.b,.4)
                     border.width: 1
@@ -89,6 +90,6 @@ Button {
                 }
             }
         }
-        Text { text: "PRIMARY  /  SECONDARY  /  TERTIARY  /  ENERGY  /  ACCENT  /  TEXT  /  OUTLINE"; color: card.ink; opacity: .6; font.pixelSize: 6; Layout.fillWidth: true; wrapMode: Text.Wrap }
+        Text { text: "PRIMARY  /  SECONDARY  /  TERTIARY  /  ENERGY  /  ACCENT  /  TEXT  /  SUBTITLE  /  OUTLINE"; color: card.ink; opacity: .6; font.pixelSize: 6; Layout.fillWidth: true; wrapMode: Text.Wrap }
     }
 }

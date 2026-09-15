@@ -13,6 +13,7 @@ Rectangle {
     readonly property color tertiary: value("tertiaryColor","#45475a")
     readonly property color energy: value("accentColor","#cba6f7")
     readonly property color accent: value("detailAccentColor","#89b4fa")
+    readonly property color subtitle: value("mutedColor","#a6adc8")
     readonly property color ink: value("textColor","#cdd6f4")
     color: Theme.secondary
     radius: 8
@@ -82,11 +83,11 @@ Rectangle {
                 Column {
                     anchors.fill: parent; anchors.margins: 12; spacing: 8
                     PreviewText { text: "DESCRIPTION"; color: preview.energy; font.bold: true }
-                    PreviewText { width: parent.width; text: "A little personality for your desktop."; font.pixelSize: 13 }
+                    PreviewText { width: parent.width; text: "Subtitle color preview"; color: preview.subtitle; font.pixelSize: 13 }
                 }
             }
         }
-        Text { Layout.fillWidth: true; wrapMode: Text.Wrap; color: Theme.muted; text: "Primary: surfaces\nSecondary: panels\nTertiary: hover states\nAccent: borders and selection\nEnergy: icons and animation\nText / Outline: readable labels" }
+        Text { Layout.fillWidth: true; wrapMode: Text.Wrap; color: Theme.muted; text: "Primary: surfaces\nSecondary: panels\nTertiary: hover states\nAccent: borders and selection\nEnergy: icons and animation\nText / Outline: readable labels\nSubtitle: secondary labels" }
         Item { Layout.fillHeight: true }
     }
 }

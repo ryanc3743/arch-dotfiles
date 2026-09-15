@@ -85,10 +85,75 @@ def catalog(folder):
 def fits(image, width, height, tolerance):
     return image["width"] > 0 and image["height"] > 0 and abs(image["width"]-width) <= tolerance and abs(image["height"]-height) <= tolerance
 
+def apply_preset(preset, state, monitors):
+    """Validate the entire draft before changing any output; retain source images."""
+    if not isinstance(preset, dict) or preset.get("mode") not in {"individual", "span"}:
+        raise ValueError("Choose individual wallpapers or a spanning wallpaper")
+    available = {m["name"] for m in monitors}
+    def image_path(value):
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("Choose an image first")
+        path = Path(value).expanduser().resolve(strict=True)
+        if not path.is_file():
+            raise ValueError("Wallpaper must be an image file")
+        return str(path)
+    slideshow = preset.get("slideshow", {})
+    if slideshow.get("enabled"):
+        if not slideshow.get("images"):
+            raise ValueError("Add slideshow images or turn the slideshow off")
+        for path in slideshow["images"]:
+            image_path(path)
+        if slideshow.get("mode", "selected") == "selected" and slideshow.get("output") not in available:
+            raise ValueError("The slideshow monitor is not connected")
+    if preset["mode"] == "span":
+        source = image_path(preset.get("spanImage"))
+        sources = {name: source for name in available}
+        paths = span(Path(source), monitors, Path.home()/".cache/linux-config/wallpaper-spans")
+    else:
+        images = preset.get("images", {})
+        if not isinstance(images, dict):
+            raise ValueError("Invalid monitor image assignments")
+        # Disconnected output assignments remain in the saved preset for later use.
+        sources = {name: image_path(path) for name, path in images.items() if name in available and path}
+        if not sources:
+            raise ValueError("Choose an image for a connected monitor")
+        paths = sources
+    old_paths = dict(state.get("outputImages", {}))
+    keys = {"DP-3":"dp3Wallpaper", "DP-2":"dp2Wallpaper", "HDMI-A-1":"hdmiWallpaper"}
+    for output, key in keys.items():
+        if state.get(key): old_paths.setdefault(output, state[key])
+    changed = []
+    try:
+        for output, path in paths.items():
+            run("awww", "img", "--outputs", output, "--transition-type", "fade", "--transition-duration", "0.4", path)
+            changed.append(output)
+    except Exception:
+        for output in changed:
+            old = old_paths.get(output)
+            if old and Path(old).is_file():
+                try: run("awww", "img", "--outputs", output, old)
+                except Exception: pass
+        raise
+    next_state = json.loads(json.dumps(state))
+    next_state.setdefault("outputImages", {}).update(paths)
+    next_state.setdefault("sourceImages", {}).update(sources)
+    for output, key in keys.items():
+        if output in paths: next_state[key] = paths[output]
+    next_state["lastMode"] = "span" if preset["mode"] == "span" else "selected"
+    return next_state
+
+def write_state(statefile, state):
+    statefile.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile("w", dir=statefile.parent, delete=False) as f:
+        json.dump(state, f)
+        temp = f.name
+    os.replace(temp, statefile)
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("action", choices=["apply","palette","restore","catalog"])
+    ap.add_argument("action", choices=["apply","palette","restore","catalog","apply-preset"])
     ap.add_argument("--image")
+    ap.add_argument("--preset-json")
     ap.add_argument("--mode", choices=["selected","all","span"], default="selected")
     ap.add_argument("--output", default="DP-2")
     ap.add_argument("--state", required=True)
@@ -98,6 +163,11 @@ def main():
     statefile = Path(args.state)
     state = json.loads(statefile.read_text()) if statefile.exists() else {}
     keys = {"DP-3":"dp3Wallpaper","DP-2":"dp2Wallpaper","HDMI-A-1":"hdmiWallpaper"}
+    if args.action == "apply-preset":
+        next_state = apply_preset(json.loads(args.preset_json), state, json.loads(run("hyprctl", "monitors", "-j")))
+        write_state(statefile, next_state)
+        print(json.dumps(next_state))
+        return
     if args.action == "palette":
         source = args.image or state.get("sourceImages", {}).get(args.output) or state.get(keys.get(args.output,""), "")
         image = Path(source)
@@ -110,13 +180,14 @@ def main():
             time.sleep(1)
         if not ready: raise RuntimeError("Wallpaper daemon did not become ready")
         available = {m["name"] for m in json.loads(run("hyprctl","monitors","-j"))}
-        for output,key in keys.items():
+        paths = {output: state.get(key) for output, key in keys.items()}
+        paths.update(state.get("outputImages", {}))
+        for output, path in paths.items():
             if output not in available: continue
-            path = state.get(key)
             if path and Path(path).is_file():
                 run("awww","img","--outputs",output,path)
         return
-    image = Path(args.image).resolve(strict=True)
+    image = Path(args.image).expanduser().resolve(strict=True)
     monitors = json.loads(run("hyprctl","monitors","-j"))
     if args.mode == "span":
         paths = span(image, monitors, Path.home()/".cache/linux-config/wallpaper-spans")
@@ -127,12 +198,10 @@ def main():
         run("awww","img","--outputs",output,"--transition-type","fade","--transition-duration","0.4",path)
     for output,path in paths.items():
         if output in keys: state[keys[output]] = path
+    state.setdefault("outputImages", {}).update(paths)
     state.setdefault("sourceImages", {}).update({name:str(image) for name in paths})
     state["lastMode"] = args.mode
-    statefile.parent.mkdir(parents=True,exist_ok=True)
-    with tempfile.NamedTemporaryFile("w", dir=statefile.parent, delete=False) as f:
-        json.dump(state,f); temp=f.name
-    os.replace(temp,statefile)
+    write_state(statefile, state)
     print(json.dumps({"image":str(image),"outputs":list(paths),"mode":args.mode}))
 if __name__ == "__main__":
     try: main()

@@ -9,6 +9,7 @@ import "components"
 ShellRoot {
     id: shell
     AppSettings { id: barSettings }
+    PresetStore { id: presetStore }
     Binding { target: Theme; property: "settings"; value: barSettings }
     WorkspaceLayout { id: workspaceLayout }
     AudioState { id: audioState }
@@ -83,12 +84,39 @@ ShellRoot {
                 color: Qt.rgba(Qt.color(barSettings.surfaceColor).r, Qt.color(barSettings.surfaceColor).g, Qt.color(barSettings.surfaceColor).b, barSettings.panelOpacity)
                 ThemeBorder { visible: Theme.unified && barSettings.panelOpacity > 0; cornerRadius: 0 }
             }
+            function dockButtonAt(x, y) {
+                var hosts = [barContent.children.find(c => c.objectName === "main-taskbar"),
+                             barContent.children.find(c => c.objectName === "launcher-bar")]
+                for (var h = 0; h < hosts.length; ++h) {
+                    var host = hosts[h]
+                    if (!host) continue
+                    var row = host.children[0]
+                    if (!row) continue
+                    for (var i = 0; i < row.children.length; ++i) {
+                        var child = row.children[i]
+                        if (!child.objectName || child.objectName === "") continue
+                        if (!(child.objectName.startsWith("app-") || child.objectName.startsWith("utility-"))) continue
+                        var p = child.mapFromItem(barContextMouse, x, y)
+                        if (p.x >= 0 && p.x <= child.width && p.y >= 0 && p.y <= child.height) return child
+                    }
+                }
+                return null
+            }
             MouseArea {
                 id: barContextMouse
                 anchors.fill: parent
                 z: 100
                 acceptedButtons: Qt.RightButton
-                onClicked: event => { panel.contextMenuX = event.x; panel.contextMenuOpen = !panel.contextMenuOpen }
+                onClicked: event => {
+                    var button = panel.dockButtonAt(event.x, event.y)
+                    if (button) {
+                        panel.contextMenuOpen = false
+                        elementInspector.open(button)
+                    } else {
+                        panel.contextMenuX = event.x
+                        panel.contextMenuOpen = !panel.contextMenuOpen
+                    }
+                }
             }
             PopupWindow {
                 id: contextMenu
@@ -114,7 +142,7 @@ ShellRoot {
                         spacing: 6
                         StyledText { text: "BAR ACTIONS"; color: barSettings.accentColor; font.family: "monospace"; font.bold: true; font.pixelSize: 12 }
                         Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Reload bar"; width: parent.width; onClicked: { panel.contextMenuOpen = false; reloadBar.running = true } }
-                        Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Bar settings"; width: parent.width; onClicked: { panel.contextMenuOpen = false; desktop.activate("settings") } }
+                        Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Customization Center"; width: parent.width; onClicked: { panel.contextMenuOpen = false; desktop.activate("settings") } }
                         Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Reset desktop layout"; width: parent.width; onClicked: { panel.contextMenuOpen = false; desktop.activate("reset") } }
                         Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Close"; width: parent.width; onClicked: panel.contextMenuOpen = false }
                     }
@@ -124,6 +152,10 @@ ShellRoot {
                 active: contextMenu.visible
                 windows: [contextMenu]
                 onCleared: panel.contextMenuOpen = false
+            }
+            ElementInspector {
+                id: elementInspector
+                appSettings: barSettings
             }
             Process {
                 id: reloadBar
@@ -158,6 +190,7 @@ ShellRoot {
                 }
                 Item { Layout.fillWidth: true }
                 LauncherBar {
+                    objectName: "launcher-bar"
                     appSettings: barSettings
                     actions: desktop
                     panelOpacity: barSettings.panelOpacity
@@ -264,14 +297,16 @@ ShellRoot {
         }
     }
     FloatingWindow {
+        DesktopEscapeShortcut {}
         id: wallpaperWindow
         title: "Wallpaper Picker"
         implicitWidth: 1000
         implicitHeight: 700
         visible: false
-        WallpaperPicker { id: wallpaperView; appSettings: barSettings }
+        WallpaperPicker { id: wallpaperView; appSettings: barSettings; presetStore: presetStore }
     }
     FloatingWindow {
+        DesktopEscapeShortcut {}
         id: connectivityWindow
         title: "Network & Bluetooth"
         implicitWidth: 620
@@ -281,19 +316,95 @@ ShellRoot {
         ConnectivityPanel { id: connectivityView; anchors.fill: parent; connectivity: connectivity; onCloseRequested: connectivityWindow.visible = false }
     }
     FloatingWindow {
+        DesktopEscapeShortcut {}
         id: launcherWindow
         title: "Applications"
-        implicitWidth: 720
-        implicitHeight: 620
+        implicitWidth: 840
+        implicitHeight: 690
         color: Theme.primary
         visible: false
-        LauncherPanel { id: launcherView; anchors.fill: parent; onCloseRequested: launcherWindow.visible = false }
+        ExpanderPanel { id: launcherView; anchors.fill: parent; monitorGroups: workspaceLayout.monitorGroups; actions: desktop; onCloseRequested: launcherWindow.visible = false; onPowerRequested: shell.openPower() }
+    }
+    function openPower() {
+        launcherWindow.visible = false
+        powerWindow.visible = true
+        powerView.prepare()
+        desktop.focusWhenMapped(powerWindow.title)
+    }
+    FloatingWindow {
+        DesktopEscapeShortcut {}
+        id: powerWindow
+        title: "Expander Power"
+        implicitWidth: 550
+        implicitHeight: 530
+        color: Theme.primary
+        visible: false
+        PowerPopover { id: powerView; anchors.fill: parent; onCloseRequested: powerWindow.visible = false }
+    }
+    Variants {
+        id: windowControls
+        model: Hyprland.toplevels.values
+        TitleBar {
+            required property var modelData
+            targetWindow: modelData
+            appSettings: barSettings
+        }
+    }
+    Variants {
+        model: Quickshell.screens
+        DesktopMenu {
+            required property var modelData
+            appSettings: barSettings
+            onCustomizeRequested: desktop.activate("settings")
+            onInspectRequested: {
+                settingsWindow.visible = true
+                Qt.callLater(() => settingsWindow.showElementInspector())
+                desktop.focusWhenMapped(settingsWindow.title)
+            }
+            onReloadRequested: Quickshell.execDetached(["systemctl", "--user", "--no-block", "restart", "desktop-bar.service"])
+            onResetRequested: desktop.activate("reset")
+        }
+    }
+    // Share one refresh across every window; moving/resizing has no per-frame IPC event.
+    Timer {
+        interval: 100
+        repeat: true
+        running: Hyprland.toplevels.values.length > 0
+        onTriggered: Hyprland.refreshToplevels()
+    }
+    IpcHandler {
+        target: "windowActions"
+        function status(): string {
+            var windows = windowControls.instances.map(bar => bar.status())
+            return JSON.stringify(Object.assign({}, windows.find(w => w.focused) || {visible: false}, {windows: windows}))
+        }
+    }
+    IpcHandler {
+        target: "expander"
+        function open(): void {
+            powerWindow.visible = false
+            if (launcherWindow.visible) launcherView.toggleTab()
+            else { launcherWindow.visible = true; launcherView.prepare() }
+            desktop.focusWhenMapped(launcherWindow.title)
+        }
+        function power(): void { shell.openPower() }
+        function hide(): void { launcherWindow.visible = false; powerWindow.visible = false }
+        function status(): string { return JSON.stringify({visible: launcherWindow.visible, tab: launcherView.tab, power: powerWindow.visible, query: launcherView.query, result: launcherView.result, windows: launcherView.windows.length}) }
+        function search(query: string): void { launcherView.query = query }
+        function capture(path: string): void { launcherView.grabToImage(r => r.saveToFile(path)) }
+    }
+    IpcHandler {
+        target: "shell"
+        function reload(): void { Quickshell.execDetached(["systemctl", "--user", "--no-block", "restart", "desktop-bar.service"]) }
     }
     IconSettings {
         id: settingsWindow
         appSettings: barSettings
+        presetStore: presetStore
+        wallpaperController: wallpaperView
     }
     FloatingWindow {
+        DesktopEscapeShortcut {}
         id: audioWindow
         title: "Audio outputs"
         implicitWidth: 520
@@ -339,6 +450,7 @@ ShellRoot {
         target: "appearance"
         function colorways(): void { settingsWindow.showColorways() }
         function wallpaperCapture(path: string): void { wallpaperView.capture(path) }
+        function wallpaperPresets(): void { wallpaperWindow.visible = true; wallpaperView.showPresets(); desktop.focusWhenMapped(wallpaperWindow.title) }
         function open(): void { desktop.activate("settings") }
         function picker(): void { settingsWindow.previewPicker() }
         function capture(path: string): void { settingsWindow.capture(path) }
@@ -348,7 +460,7 @@ ShellRoot {
         target: "desktop"
         function activate(id: string): void { desktop.activate(id) }
         function reset(): void { desktop.reset() }
-        function hideUtilities(): void { wallpaperWindow.visible = false; settingsWindow.visible = false; audioWindow.visible = false; connectivityWindow.visible = false; launcherWindow.visible = false }
+        function hideUtilities(): void { powerWindow.visible = false; wallpaperWindow.visible = false; settingsWindow.visible = false; audioWindow.visible = false; connectivityWindow.visible = false; launcherWindow.visible = false }
         function status(): string {
             return JSON.stringify({
                 wallpaper: wallpaperWindow.visible, settings: settingsWindow.visible,

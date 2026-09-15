@@ -18,13 +18,13 @@ Rectangle {
         StyledText {
             Layout.fillWidth: true
             text: "Choose where to play sound."
-            color: Theme.choose("#bac2de", "text")
+            color: Theme.choose("#bac2de", "muted")
             font.pixelSize: 15
         }
         StyledText {
             visible: view.audio.outputs.length === 0
             text: "No audio outputs are available."
-            color: Theme.choose("#bac2de", "text")
+            color: Theme.choose("#bac2de", "muted")
         }
         ScrollView {
             Layout.fillWidth: true

@@ -29,6 +29,75 @@ Rectangle {
     function capture(path) { picker.grabToImage(r => r.saveToFile(path)) }
     id: picker
     property var appSettings
+    required property var presetStore
+    property bool editingPresets: false
+    readonly property var outputs: Quickshell.screens.map(s => s.name)
+    property var wallpaperState: ({})
+    readonly property bool presetBusy: presetApply.running || setWallpaper.running || restore.running
+    property var pendingPreset: null
+    property bool matchAfterPreset: true
+    property bool previousSlideshow: false
+    signal presetApplied(bool success)
+    FileView {
+        id: wallpaperStateFile
+        path: picker.statePath
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: {
+            try { picker.wallpaperState = JSON.parse(text()) }
+            catch (error) { picker.failure = "Could not read wallpaper settings." }
+        }
+    }
+    function currentSnapshot() {
+        var state = wallpaperState
+        var images = Object.assign({"DP-3":state.dp3Wallpaper || "", "DP-2":state.dp2Wallpaper || "", "HDMI-A-1":state.hdmiWallpaper || ""}, state.outputImages || {}, state.sourceImages || {})
+        return {mode:state.lastMode === "span" ? "span" : "individual", images:images,
+            spanImage:Object.values(state.sourceImages || {})[0] || selectedImage,
+            slideshow:{enabled:slideshowActive, images:slideshowImages.slice(), index:slideIndex,
+                output:slideshowOutput, mode:slideshowMode, order:slideState.order,
+                intervalChoice:slideState.intervalChoice, target:slideState.target}}
+    }
+    function showPresets() {
+        presetEditor.prepare()
+        editingPresets = true
+    }
+    function applyPreset(preset, matchPalette) {
+        if (presetBusy) { failure = "Wait for the current wallpaper change to finish."; return false }
+        pendingPreset = JSON.parse(JSON.stringify(preset))
+        matchAfterPreset = matchPalette !== false
+        previousSlideshow = slideshowActive
+        slideshowActive = false
+        failure = ""
+        presetApply.command = ["python3", helper, "apply-preset", "--state", statePath, "--preset-json", JSON.stringify(pendingPreset)]
+        presetApply.running = true
+        return true
+    }
+    Process {
+        id: presetApply
+        stderr: StdioCollector { onStreamFinished: if (text.trim()) picker.failure = text.trim() }
+        stdout: StdioCollector { onStreamFinished: if (text.trim()) picker.wallpaperState = JSON.parse(text) }
+        onExited: (code, status) => {
+            if (code === 0) {
+                picker.selectedImage = picker.pendingPreset.mode === "span" ? picker.pendingPreset.spanImage : (picker.pendingPreset.images[picker.selectedOutput] || picker.selectedImage)
+                var slide = picker.pendingPreset.slideshow || {}
+                picker.slideshowImages = slide.images || []
+                picker.slideIndex = Math.max(-1, Math.min(picker.slideshowImages.length - 1, slide.index ?? -1))
+                picker.slideshowOutput = slide.output || picker.selectedOutput
+                picker.slideshowMode = ["selected","all","span"].includes(slide.mode) ? slide.mode : "selected"
+                slideState.order = slide.order === 1 ? 1 : 0
+                slideState.intervalChoice = Math.max(0, Math.min(5, slide.intervalChoice ?? 3))
+                slideState.target = ["selected","all","span"].indexOf(picker.slideshowMode)
+                picker.slideshowActive = !!slide.enabled
+                slideSave.restart()
+                if (picker.matchAfterPreset && picker.appSettings.followWallpaper) picker.appSettings.matchWallpaper()
+            } else {
+                picker.slideshowActive = picker.previousSlideshow
+                if (!picker.failure) picker.failure = "Could not apply wallpaper preset."
+            }
+            picker.presetApplied(code === 0)
+        }
+    }
     property bool slideStateReady: false
     property bool wallpaperRestored: false
     property alias slideshowActive: slideState.enabled
@@ -65,7 +134,7 @@ Rectangle {
         advanceSlide()
     }
     function advanceSlide() {
-        if (!slideshowActive || !wallpaperRestored || setWallpaper.running || restore.running || !slideshowImages.length) return
+        if (!slideshowActive || !wallpaperRestored || presetApply.running || setWallpaper.running || restore.running || !slideshowImages.length) return
         slideIndex = Slideshow.nextIndex(slideshowImages.length,slideIndex,slideshowOrder.currentIndex === 1,Math.random())
         apply(slideshowImages[slideIndex],slideshowMode,slideshowOutput)
     }
@@ -81,7 +150,7 @@ Rectangle {
     readonly property string statePath: Quickshell.statePath("wallpaper-settings.json")
     readonly property string helper: Qt.resolvedUrl("../scripts/wallpaper.py").toString().replace("file://", "")
     function apply(image, mode, output) {
-        if (setWallpaper.running) return
+        if (setWallpaper.running || presetApply.running) return
         selectedImage = image
         failure = ""
         setWallpaper.command = ["python3", helper, "apply", "--image", image, "--mode", mode,
@@ -128,7 +197,16 @@ Rectangle {
     }
     Timer { interval: 2000; running: true; onTriggered: restore.running = true }
 
+    WallpaperPresetEditor {
+        id: presetEditor
+        anchors.fill: parent
+        visible: picker.editingPresets
+        picker: picker
+        store: picker.presetStore
+        onCloseRequested: picker.editingPresets = false
+    }
     ColumnLayout {
+        visible: !picker.editingPresets
         anchors.fill: parent
         anchors.margins: 24
 
@@ -150,6 +228,8 @@ Rectangle {
 
                 Layout.fillWidth: true
             }
+
+            ExpanderButton { text: "Presets"; onClicked: picker.showPresets() }
 
             StyledText {
                 text: selectedOutput

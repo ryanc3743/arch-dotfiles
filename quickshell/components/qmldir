@@ -28,3 +28,13 @@ StyledLabel 1.0 StyledLabel.qml
 ThemeBorder 1.0 ThemeBorder.qml
 DesktopThemePreview 1.0 DesktopThemePreview.qml
 ColorwayCard 1.0 ColorwayCard.qml
+ExpanderPanel 1.0 ExpanderPanel.qml
+PowerPopover 1.0 PowerPopover.qml
+TitleBar 1.0 TitleBar.qml
+ExpanderButton 1.0 ExpanderButton.qml
+PresetStore 1.0 PresetStore.qml
+PresetLibrary 1.0 PresetLibrary.qml
+WallpaperPresetEditor 1.0 WallpaperPresetEditor.qml
+DesktopEscapeShortcut 1.0 DesktopEscapeShortcut.qml
+DesktopMenu 1.0 DesktopMenu.qml
+ElementInspector 1.0 ElementInspector.qml
