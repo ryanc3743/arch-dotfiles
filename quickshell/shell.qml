@@ -353,7 +353,6 @@ ShellRoot {
     Variants {
         model: Quickshell.screens
         DesktopMenu {
-            required property var modelData
             appSettings: barSettings
             onCustomizeRequested: desktop.activate("settings")
             onInspectRequested: {

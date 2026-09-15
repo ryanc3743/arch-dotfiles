@@ -6,7 +6,7 @@ import Quickshell.Hyprland
 
 PopupWindow {
     id: inspector
-    required property Item target
+    property Item target: null
     required property var appSettings
     property string entryId: ""
     property string entryLabel: ""
