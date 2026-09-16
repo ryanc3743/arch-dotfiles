@@ -194,8 +194,7 @@ QtObject {
             property var icons: ({})
             property var descriptions: ({})
             property real panelOpacity: 0.88
-            property real centerOpacity: 1
-            property real centerOpacity: 1
+            property real centerOpacity: 0.55
             property string surfaceColor: "#1e1e2e"
             property string accentColor: "#cba6f7"
             property string textColor: "#cdd6f4"

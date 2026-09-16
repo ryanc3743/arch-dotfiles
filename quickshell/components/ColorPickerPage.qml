@@ -129,48 +129,24 @@ Rectangle {
                 onMoved: { page.hue = value; page.selectedColor = Qt.hsva(value,Math.max(.1,page.selectedColor.hsvSaturation),Math.max(.1,page.selectedColor.hsvValue),1) }
             }
         }
-        Rectangle {
-            Layout.fillWidth: true; Layout.preferredHeight: 88
-            color: page.preview("surfaceColor")
-            ThemeBorder {
-                lineColor: page.preview("detailAccentColor")
-                lineStyle: page.previewTheme.borderStyle || "solid"
-                lineWidth: page.previewTheme.borderWidth === undefined ? 1 : page.previewTheme.borderWidth
-                cornerRadius: page.previewTheme.borderRadius === undefined ? 8 : page.previewTheme.borderRadius
-            }
-            RowLayout {
-                anchors.fill: parent; anchors.margins: 8; spacing: 4
-                Repeater {
-                    model: [
-                            {key:"surfaceColor",label:"Primary"},
-                            {key:"secondaryColor",label:"Secondary"},
-                            {key:"tertiaryColor",label:"Tertiary"},
-                            {key:"accentColor",label:"Energy"},
-                            {key:"detailAccentColor",label:"Accent"},
-                            {key:"textColor",label:"Text"},
-                            {key:"mutedColor",label:"Subtitle"},
-                            {key:"textOutlineColor",label:"Text Outline"}]
-                    Rectangle {
-                        id: previewSwatch
-                        required property var modelData
-                        Layout.fillWidth: true; Layout.preferredHeight: 40
-                        radius: 6
-                        color: page.preview(previewSwatch.modelData.key)
-                        border.color: page.roleKey === previewSwatch.modelData.key ? page.preview("accentColor") : Qt.rgba(0,0,0,0.4)
-                        border.width: page.roleKey === previewSwatch.modelData.key ? 3 : 1
-                        StyledText {
-                            anchors.centerIn: parent
-                            text: previewSwatch.modelData.label
-                            color: page.roleKey === previewSwatch.modelData.key ? page.preview("accentColor") : page.preview("textColor")
-                            font.pixelSize: 10
-                        }
-                        MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: page.roleRequested(previewSwatch.modelData.key, previewSwatch.modelData.label)
-                        }
-                    }
-                }
-            }
+        ThemePreviewCanvas {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 150
+            theme: page.previewTheme
+            appSettings: page.appSettings
+            tintIcons: !page.leaveIconsDefault
+            barOpacity: 1
+            swatchRoles: [
+                    {key:"surfaceColor",label:"Primary"},
+                    {key:"secondaryColor",label:"Secondary"},
+                    {key:"tertiaryColor",label:"Tertiary"},
+                    {key:"accentColor",label:"Energy"},
+                    {key:"detailAccentColor",label:"Accent"},
+                    {key:"textColor",label:"Text"},
+                    {key:"mutedColor",label:"Subtitle"},
+                    {key:"textOutlineColor",label:"Text Outline"}]
+            selectedSwatch: swatchRoles.findIndex(r => r.key === page.roleKey)
+            onRolePicked: (key,label) => page.roleRequested(key,label)
         }
         CheckBox { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary;
             text: "Leave icons default"

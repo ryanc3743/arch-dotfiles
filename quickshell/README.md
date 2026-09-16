@@ -33,6 +33,9 @@ icon name (e.g. firefox), an absolute image path, or a file URL. The file is
 Quickshell's statePath("bar-settings.json"). Old app-icons.json files are left
 untouched; the former glyph-only editor is superseded by this working editor.
 Default opacity is 88%; Qt.rgba avoids confusion over QML's alpha-first hex.
+The Customization Center is a card-based overview (Colors, Icons, Descriptions,
+Desktop presets, Opacity) with a live translucent desktop preview; its window
+translucency defaults to 55% via Center window opacity.
 
 The reset button invokes resetDesktopLayout() in hypr/hyprland.lua, exactly
 the same function as SUPER+SHIFT+R. It restores all nine workspace monitors

@@ -18,8 +18,15 @@ start with **Use current setup**.
 
 ## Desktop presets
 
-Open **Customization Center → Desktop presets**. Use the existing desktop color editor,
-color picker, live preview, border controls, icons, descriptions and opacity.
+Open **Customization Center → Desktop presets**. The center opens on an Overview
+of cards — live preview, Colors, Icons, Descriptions, Desktop presets, Opacity —
+each opening its own section (back to return). Use the existing desktop color
+editor, color picker, live preview, border controls, icons, descriptions and
+opacity; pending edits accumulate across sections until an explicit Save.
+
+The window and preview respect **Opacity & Layers**: Bar panels stays at its existing
+default; **Center window** (default 55%) makes the Customization Center translucent
+over your desktop, matching the bar's color preview.
 **Subtitle** is an independently editable color for secondary labels and help text;
 it is preserved by Save and included in both colorways and desktop presets.
 
