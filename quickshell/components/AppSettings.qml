@@ -7,6 +7,7 @@ QtObject {
     property string settingsPath: Quickshell.statePath("bar-settings.json")
     property alias overrides: data.icons
     property alias panelOpacity: data.panelOpacity
+    property alias centerOpacity: data.centerOpacity
     property alias descriptions: data.descriptions
     property alias surfaceColor: data.surfaceColor
     property alias accentColor: data.accentColor
@@ -137,12 +138,13 @@ QtObject {
             data.tintIcons, data.followWallpaper, data.wallpaperColorOutput,
             data.popupFontSize, data.popupMaxWidth, data.popupBorderWidth, data.tertiaryColor, data.detailAccentColor, data.textOutlineColor, data.textStyle, data.borderStyle, data.borderWidth, data.borderRadius])
     }
-    function save(icons, opacity, nextDescriptions, nextTheme, nextDisplay) {
+    function save(icons, opacity, nextDescriptions, nextTheme, nextDisplay, centerOpacity) {
         var before = snapshot()
         errorMessage = ""
         data.icons = Object.assign({}, icons)
         data.descriptions = Object.assign({}, nextDescriptions)
         data.panelOpacity = Math.max(0, Math.min(1, opacity))
+        if (centerOpacity !== undefined) data.centerOpacity = Math.max(0, Math.min(1, centerOpacity))
         if (nextTheme) {
             if (nextTheme.borderRadius !== undefined) data.borderRadius = nextTheme.borderRadius
             if (nextTheme.borderWidth !== undefined) data.borderWidth = nextTheme.borderWidth
@@ -192,6 +194,8 @@ QtObject {
             property var icons: ({})
             property var descriptions: ({})
             property real panelOpacity: 0.88
+            property real centerOpacity: 1
+            property real centerOpacity: 1
             property string surfaceColor: "#1e1e2e"
             property string accentColor: "#cba6f7"
             property string textColor: "#cdd6f4"

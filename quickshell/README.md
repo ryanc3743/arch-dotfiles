@@ -41,15 +41,43 @@ from wallpaper routing.
 
 ## Checks
 
-Lint the Hyprland config from the repository root:
+Run from the repository root:
 
 ```sh
+QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input quickshell/tests -o -,txt
+lua quickshell/tests/test-reset.lua
 luac -p hypr/hyprland.lua
 ```
 
-On this desktop, Hyprland starts the managed `desktop-bar.service` at login
-(via `linux-config/start-desktop.sh`).
+`quickshell -p quickshell/test-system.qml` checks real system sampling, media
+layout/paused state, and tray URL handling; successful output includes
+`SYSTEM_METRICS_PASS` and `SERVICE_PILLS_PASS`. Use an offscreen Qt platform
+and a private runtime directory for isolated checks.
+
+`quickshell -p quickshell/test-audio.qml` uses simulated devices to verify
+output filtering, selection/confirmation, disconnect handling, mute and
+volume limits without changing the host's audio route. It prints
+`AUDIO_CHECK_PASS` on success.
+
+The settings runtime check uses the actual Quickshell plugins:
+
+```sh
+BAR_TEST_STATE=/tmp/bar-settings-check.json quickshell -p quickshell/test-settings.qml
+```
+
+The live check opens/focuses apps and resets their homes; run deliberately:
+
+```sh
+python quickshell/tests/verify-live.py
+```
+
+Start only one instance: `quickshell -n -d -p ~/.config/quickshell`.
+Do not append `&` to the daemon launch. Use `quickshell list` to identify
+duplicates and `quickshell kill -i ID` for only that instance.
+
+On this desktop, Hyprland starts the managed `desktop-bar.service` at login.
 Use `systemctl --user restart desktop-bar.service` to restart that instance.
+See `docs/boot-recovery.md` for the service and graphics-driver recovery setup.
 
 Development IPC: `quickshell ipc -p ~/.config/quickshell call desktop status`.
 Utility/app actions use the same desktop activate ID handler internally.

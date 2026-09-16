@@ -41,8 +41,9 @@ PanelWindow {
         var wh = geometry.size ? geometry.size[1] : 32
         var bw = implicitWidth
         var reserved = monitor && monitor.lastIpcObject.reserved ? monitor.lastIpcObject.reserved : [0,0,0,0]
-        // Fullscreen covers normal panels, so it uses the physical screen bounds.
-        if (fullscreen) return {x:Math.max(0, (sw - bw) / 2), y:0, above:false, fits:true}
+        // Fullscreen covers normal panels, and the bar must never overlap window
+        // geometry, so there is no usable placement for it there: hide instead.
+        if (fullscreen) return {x:0, y:0, above:false, fits:false}
         var left = Math.max(reserved[0], wx), top = reserved[1], right = Math.min(sw - reserved[2], wx + ww)
         var x = Math.max(left, Math.min(right - bw, wx + ww - bw))
         var aboveY = wy - 36
@@ -57,8 +58,10 @@ PanelWindow {
                 return x < ox + g.size[0] && x + bw > ox && aboveY < oy + g.size[1] && aboveY + 32 > oy
             })
         }
-        var y = clearAbove ? aboveY : Math.max(top, wy)
-        return {x:x, y:y, above:clearAbove, fits:right - left >= bw && (clearAbove || y + 32 <= Math.min(wy + wh, sh - reserved[3]))}
+        // Tiled windows can be flush to the reserved edge with no clear strip above;
+        // a fallback that overlays the window's top 32px would cover content, so hide.
+        if (!clearAbove) return {x:0, y:0, above:false, fits:false}
+        return {x:x, y:aboveY, above:true, fits:right - left >= bw}
     }
     color: "transparent"
     function perform(action) {

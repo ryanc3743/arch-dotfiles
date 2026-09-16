@@ -205,12 +205,55 @@ FloatingWindow {
                 StyledLabel { text: "Preview the selected monitor’s palette, then Save to apply."; color: Theme.muted }
                 StyledLabel { visible: settingsWindow.paletteError !== ""; text: settingsWindow.paletteError; color: "#f38ba8"; Layout.fillWidth: true; wrapMode: Text.Wrap }
                 Rectangle {
-                    Layout.fillWidth: true; Layout.preferredHeight: 60
+                    Layout.fillWidth: true; Layout.preferredHeight: 86
+                    radius: 8
                     color: settingsWindow.draftTheme.surfaceColor
                     border.color: settingsWindow.draftTheme.accentColor; border.width: 2
-                    Row { anchors.centerIn: parent; spacing: 14
-                        Rectangle { width: 32; height: 32; radius: 6; color: settingsWindow.draftTheme.secondaryColor || "#313244"; border.color: settingsWindow.draftTheme.accentColor; border.width: 2 }
-                        StyledText { anchors.verticalCenter: parent.verticalCenter; text: "Your desktop palette"; color: settingsWindow.draftTheme.accentColor; font.bold: true }
+                    ColumnLayout {
+                        anchors.fill: parent; anchors.margins: 10
+                        spacing: 8
+                        RowLayout {
+                            Layout.fillWidth: true
+                            StyledText { text: "Your desktop palette"; color: settingsWindow.draftTheme.accentColor; font.bold: true }
+                            Item { Layout.fillWidth: true }
+                            StyledText { text: "Click a swatch to pick its color"; color: Theme.muted; font.pixelSize: 12 }
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            Repeater {
+                                model: [
+                                        {key:"surfaceColor",label:"Primary"},
+                                        {key:"secondaryColor",label:"Secondary"},
+                                        {key:"tertiaryColor",label:"Tertiary"},
+                                        {key:"accentColor",label:"Energy"},
+                                        {key:"detailAccentColor",label:"Accent"},
+                                        {key:"textColor",label:"Text"},
+                                        {key:"mutedColor",label:"Subtitle"},
+                                        {key:"textOutlineColor",label:"Text Outline"}]
+                                Button {
+                                    id: swatch
+                                    required property var modelData
+                                    Layout.fillWidth: true; Layout.preferredHeight: 34
+                                    Accessible.name: "Choose " + swatch.modelData.label + " color"
+                                    background: Rectangle {
+                                        radius: 4
+                                        color: settingsWindow.draftTheme[swatch.modelData.key] || "#313244"
+                                        border.color: Qt.rgba(0,0,0,.4); border.width: 1
+                                    }
+                                    onClicked: {
+                                        settingsWindow.selectedRole = swatch.modelData.key
+                                        settingsWindow.selectedRoleLabel = swatch.modelData.label
+                                        colorPage.selectedColor = settingsWindow.draftTheme[swatch.modelData.key] || "#313244"
+                                        colorPage.hue = Math.max(0,colorPage.selectedColor.hsvHue)
+                                        settingsWindow.pickingColor = true
+                                    }
+                                    ToolTip.visible: swatchHover.hovered
+                                    ToolTip.text: swatch.modelData.label + " · " + (settingsWindow.draftTheme[swatch.modelData.key] || "#313244")
+                                    HoverHandler { id: swatchHover }
+                                }
+                            }
+                        }
                     }
                 }
                 StyledText { id: desktopPresetTitle; text: "My desktop presets"; color: Theme.text; font.bold: true; font.pixelSize: 20 }
@@ -400,6 +443,12 @@ FloatingWindow {
         previewTheme: settingsWindow.draftTheme
         leaveIconsDefault: !settingsWindow.draftTint
         onIconModeChanged: leaveDefault => settingsWindow.draftTint = !leaveDefault
+        onRoleRequested: (key,label) => {
+            settingsWindow.selectedRole = key
+            settingsWindow.selectedRoleLabel = label
+            colorPage.selectedColor = settingsWindow.draftTheme[key] || "#313244"
+            colorPage.hue = Math.max(0,colorPage.selectedColor.hsvHue)
+        }
         onCanceled: settingsWindow.pickingColor = false
         onAccepted: value => {
             var next = Object.assign({}, settingsWindow.draftTheme)

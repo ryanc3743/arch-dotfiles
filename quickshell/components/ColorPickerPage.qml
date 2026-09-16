@@ -69,6 +69,7 @@ Rectangle {
     Shortcut { sequences: ["Ctrl+Shift+Z","Ctrl+Y"]; enabled: page.visible && !!page.QsWindow.window && page.QsWindow.window.visible; onActivated: page.redo() }
     signal accepted(color value)
     signal canceled()
+    signal roleRequested(string key, string label)
     color: Theme.primary
     function preview(key) { return key === roleKey ? selectedColor : (previewTheme[key] || "#313244") }
     ColumnLayout {
@@ -137,16 +138,37 @@ Rectangle {
                 lineWidth: page.previewTheme.borderWidth === undefined ? 1 : page.previewTheme.borderWidth
                 cornerRadius: page.previewTheme.borderRadius === undefined ? 8 : page.previewTheme.borderRadius
             }
-            Row {
-                anchors.centerIn: parent; spacing: 16
-                Rectangle { width: 44; height: 44; radius: 8; color: page.preview("secondaryColor"); border.color: page.preview("accentColor"); border.width: 2
-                    ThemedIcon { anchors.fill: parent; anchors.margins: 5; source: page.appSettings.icon("firefox"); fillMode: Image.PreserveAspectFit; tintEnabled: !page.leaveIconsDefault; tintColor: page.preview("accentColor") }
-                }
-                Column {
-                    StyledText { text: "DESKTOP PREVIEW"; color: page.preview("accentColor"); font.bold: true }
-                    StyledText { text: "Panels, icons and menus"; color: page.preview("textColor")
-                        style: page.roleKey === "textOutlineColor" ? Text.Outline : (page.previewTheme.textStyle || Text.Normal)
-                        styleColor: page.preview("textOutlineColor") }
+            RowLayout {
+                anchors.fill: parent; anchors.margins: 8; spacing: 4
+                Repeater {
+                    model: [
+                            {key:"surfaceColor",label:"Primary"},
+                            {key:"secondaryColor",label:"Secondary"},
+                            {key:"tertiaryColor",label:"Tertiary"},
+                            {key:"accentColor",label:"Energy"},
+                            {key:"detailAccentColor",label:"Accent"},
+                            {key:"textColor",label:"Text"},
+                            {key:"mutedColor",label:"Subtitle"},
+                            {key:"textOutlineColor",label:"Text Outline"}]
+                    Rectangle {
+                        id: previewSwatch
+                        required property var modelData
+                        Layout.fillWidth: true; Layout.preferredHeight: 40
+                        radius: 6
+                        color: page.preview(previewSwatch.modelData.key)
+                        border.color: page.roleKey === previewSwatch.modelData.key ? page.preview("accentColor") : Qt.rgba(0,0,0,0.4)
+                        border.width: page.roleKey === previewSwatch.modelData.key ? 3 : 1
+                        StyledText {
+                            anchors.centerIn: parent
+                            text: previewSwatch.modelData.label
+                            color: page.roleKey === previewSwatch.modelData.key ? page.preview("accentColor") : page.preview("textColor")
+                            font.pixelSize: 10
+                        }
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: page.roleRequested(previewSwatch.modelData.key, previewSwatch.modelData.label)
+                        }
+                    }
                 }
             }
         }
