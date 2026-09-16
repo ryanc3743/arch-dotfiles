@@ -12,13 +12,13 @@ Rectangle {
     id: picker
 
     property var wallpapers: []
-    property bool fitOnly: true
+    property bool fitOnly: false
     property int tolerance: 400
     readonly property var monitorScreen: Quickshell.screens.find(s => s.name === selectedOutput)
     readonly property int targetWidth: monitorScreen ? Math.round(monitorScreen.width * monitorScreen.devicePixelRatio) : (selectedOutput === "DP-3" ? 1080 : selectedOutput === "DP-2" ? 2560 : 1920)
     readonly property int targetHeight: monitorScreen ? Math.round(monitorScreen.height * monitorScreen.devicePixelRatio) : (selectedOutput === "DP-3" ? 1920 : selectedOutput === "DP-2" ? 1440 : 1080)
     readonly property var filteredWallpapers: wallpapers.filter(image => !fitOnly ||
-        (image.width > 0 && image.height > 0 && Math.abs(image.width-targetWidth) <= tolerance && Math.abs(image.height-targetHeight) <= tolerance))
+        (image.width > 0 && image.height > 0 && Math.abs(image.width - targetWidth) <= tolerance && Math.abs(image.height - targetHeight) <= tolerance))
     onSelectedOutputChanged: wallpaperGrid.positionViewAtBeginning()
     onToleranceChanged: wallpaperGrid.positionViewAtBeginning()
     onFitOnlyChanged: wallpaperGrid.positionViewAtBeginning()
