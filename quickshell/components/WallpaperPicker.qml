@@ -29,6 +29,7 @@ Rectangle {
     property var appSettings
     required property var presetStore
     property bool editingPresets: false
+    property bool editingGallery: false
     readonly property var outputs: Quickshell.screens.map(s => s.name)
     property var wallpaperState: ({})
     readonly property bool presetBusy: presetApply.running || setWallpaper.running || restore.running
@@ -195,6 +196,11 @@ Rectangle {
     }
     Timer { interval: 2000; running: true; onTriggered: restore.running = true }
 
+    WallpaperGallery {
+        picker: picker
+        visible: picker.editingGallery
+    }
+
     WallpaperPresetEditor {
         id: presetEditor
         anchors.fill: parent
@@ -205,7 +211,7 @@ Rectangle {
     }
 
     ColumnLayout {
-        visible: !picker.editingPresets
+        visible: !picker.editingPresets && !picker.editingGallery
         anchors.fill: parent
         anchors.margins: 24
         spacing: 14
