@@ -12,15 +12,23 @@ def dispatch(expression):
     if result.stdout.strip() != 'ok':
         raise RuntimeError(result.stdout.strip())
 
-def main(action, address):
-    if not re.fullmatch(r'(0x)?[0-9a-fA-F]+', address):
-        raise ValueError('Invalid window address')
-    address = '0x' + address.removeprefix('0x')
-    selector = 'address:' + address
-    clients = json.loads(subprocess.check_output(['hyprctl', 'clients', '-j']))
-    window = next((w for w in clients if w['address'] == address), None)
-    if window is None:
-        return
+def main(action, address=None):
+    if address is None or address == 'focused':
+        active = json.loads(subprocess.check_output(['hyprctl', 'activewindow', '-j']))
+        if not active.get('address'):
+            return
+        address = active['address']
+        window = active
+        selector = 'address:' + address
+    else:
+        if not re.fullmatch(r'(0x)?[0-9a-fA-F]+', address):
+            raise ValueError('Invalid window address')
+        address = '0x' + address.removeprefix('0x')
+        selector = 'address:' + address
+        clients = json.loads(subprocess.check_output(['hyprctl', 'clients', '-j']))
+        window = next((w for w in clients if w['address'] == address), None)
+        if window is None:
+            return
     state_dir = Path(os.environ['XDG_RUNTIME_DIR']) / 'expander-windows'
     state_dir.mkdir(mode=0o700, exist_ok=True)
     state_path = state_dir / (address + '.json')
@@ -37,6 +45,16 @@ def main(action, address):
             dispatch(f'hl.dsp.window.move({{window="{selector}", workspace={json.dumps(workspace)}, follow=true}})')
             state_path.unlink(missing_ok=True)
         dispatch(f"hl.dsp.focus({{window='{selector}'}})")
+    elif action == 'toggle-minimize':
+        if window['workspace']['name'] == 'special:expander-minimized':
+            state = json.loads(state_path.read_text()) if state_path.exists() else {}
+            workspace = state.get('workspace', '1') if state.get('pid') == window['pid'] else '1'
+            dispatch(f'hl.dsp.window.move({{window="{selector}", workspace={json.dumps(workspace)}, follow=true}})')
+            state_path.unlink(missing_ok=True)
+            dispatch(f"hl.dsp.focus({{window='{selector}'}})")
+        else:
+            state_path.write_text(json.dumps({'workspace': window['workspace']['name'], 'pid': window['pid']}))
+            dispatch(f"hl.dsp.window.move({{window='{selector}', workspace='special:expander-minimized', follow=false}})")
     elif action == 'close':
         dispatch(f"hl.dsp.window.close({{window='{selector}'}})")
         state_path.unlink(missing_ok=True)

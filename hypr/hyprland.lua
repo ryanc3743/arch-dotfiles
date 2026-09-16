@@ -350,6 +350,8 @@ hl.bind(mainMod .. " + B", hl.dsp.window.fullscreen({
 }))
 hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
+-- Minimize/restore the focused window via the expander special workspace.
+hl.bind(mainMod .. " + X", hl.dsp.exec_cmd("python3 ~/.config/quickshell/scripts/window-actions.py toggle-minimize focused"))
 hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit"))    -- dwindle only
 
 -- Move focus with mainMod + arrow keys

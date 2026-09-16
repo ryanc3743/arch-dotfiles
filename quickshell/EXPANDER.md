@@ -1,4 +1,4 @@
-# Expander and window controls
+# Expander
 
 Implemented from Ryan's `/home/ry/projects/handoff-plan.md`, 2026-09-15.
 Live config: `~/.config/quickshell/`; tracked mirror: `~/dotfiles/quickshell/`.
@@ -37,34 +37,20 @@ Power has Lock, Sleep, Log out and Reboot. Sleep/logout/reboot require selecting
 the action a second time. **Lock uses swaylock** because this desktop had no locker
 or loginctl lock-signal listener. Tests do not lock, suspend, log out or reboot.
 
-## Window controls
+## Window minimize
 
-Each visible window has its own control strip centered along its top edge, including on the
-rotated display and monitors at negative coordinates. Controls operate on their
-own window without requiring it to be focused. Inactive workspaces, minimized
-windows, and windows covered by a fullscreen window do not leave stray controls.
-The order is **minimize · maximize · close**. Controls sit above their window only
-when the entire strip clears other windows and the taskbar; otherwise they sit
-inside their own top edge, centered. Very small/off-screen windows hide controls
-when there is no room. One shared timer refreshes geometry.
-The overlay never requests keyboard focus and reserves no workspace area.
+SUPER+X toggles the focused window into `special:expander-minimized` and back:
+the first press minimizes it, the second restores it to its original workspace and
+focuses it. Restore metadata lives per window under
+`$XDG_RUNTIME_DIR/expander-windows/`; stale PID/address records fall back to
+workspace 1. Minimized windows survive shell reloads and remain in Overview,
+which restores them when clicked. This Hyprland version uses Lua dispatchers;
+there is no native minimize action, so the toggle drives
+`scripts/window-actions.py`.
 
-**Super+B fullscreen only:** the controls sit inside the top-center screen edge; all button and strip
-backgrounds are transparent, including on hover. Symbols follow **Text**, and each button has a separate **Subtitle**-colored outline.
-Hover strengthens the outline and adds an action-color tint: red for close and
-theme accent colors for minimize/maximize. Normal mode also tints the button
-background; fullscreen keeps the background transparent even on hover. Leaving fullscreen restores the
-desktop colorway. Maximize mode (the square button) retains desktop colors.
-
-This Hyprland version uses Lua dispatchers; there is no native minimize action.
-Minimize moves the addressed window to `special:expander-minimized`. Overview
-restores its original workspace and focuses it. Per-window restore metadata lives
-under `$XDG_RUNTIME_DIR/expander-windows/`; stale PID/address records fall back to
-workspace 1. Minimized windows survive shell reloads and remain in Overview.
-
-Geometry is refreshed every 100 ms by one shared timer to track moves and
-resizes across all windows. Controls use monitor-relative logical coordinates. Super+B still uses the
-original fullscreen binding, and Super+W retains its original close binding.
+No per-window overlay controls remain: close and fullscreen keep their existing
+keybinds (SUPER+W, SUPER+B), and the Super key's tap/hold gestures still split
+Launcher from Shortcuts & power.
 
 ## IPC
 
@@ -73,7 +59,6 @@ quickshell ipc -p ~/.config/quickshell call expander open
 quickshell ipc -p ~/.config/quickshell call expander power
 quickshell ipc -p ~/.config/quickshell call expander hide
 quickshell ipc -p ~/.config/quickshell call expander status
-quickshell ipc -p ~/.config/quickshell call windowActions status
 quickshell ipc -p ~/.config/quickshell call shell reload
 ```
 
@@ -93,11 +78,10 @@ preserves applications launched from the shell when the bar restarts.
   using isolated test fixtures (no remote SSH connection was initiated).
 - Actual grim full-screen and region captures to temporary files, with a fixed
   test selection standing in for interactive slurp selection.
-- Disposable window: maximize/unmaximize, minimize/restore, addressed close,
-  monitor tracking on DP-3, DP-2 and HDMI-A-1, fullscreen overlay placement.
-- Per-window revision: controls on focused and unfocused windows, addressed close,
-  centered transparent fullscreen, opaque normal/maximized modes, taskbar
-  clearance, and safe above/inside placement.
+- Disposable window: minimize/restore round-trip and restore-to-original-workspace
+  for both addressed and focused windows, with per-window metadata cleanup.
+- Keybind review: SUPER+X free of conflicts; close (SUPER+W) and fullscreen
+  (SUPER+B) untouched; the removed per-window overlay no longer covers content.
 - Lua syntax, Hyprland config errors, shell syntax and dotfiles whitespace checks.
 
 Pre-existing icon lookup and PipeWire channel-map warnings remain unrelated to

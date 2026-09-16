@@ -33,7 +33,6 @@ Taskbar 1.0 Taskbar.qml
 ThemeBorder 1.0 ThemeBorder.qml
 ThemePreviewCanvas 1.0 ThemePreviewCanvas.qml
 ThemedIcon 1.0 ThemedIcon.qml
-TitleBar 1.0 TitleBar.qml
 TrayPill 1.0 TrayPill.qml
 WallpaperPicker 1.0 WallpaperPicker.qml
 WallpaperPresetEditor 1.0 WallpaperPresetEditor.qml

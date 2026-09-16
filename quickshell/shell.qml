@@ -342,15 +342,6 @@ ShellRoot {
         PowerPopover { id: powerView; anchors.fill: parent; onCloseRequested: powerWindow.visible = false }
     }
     Variants {
-        id: windowControls
-        model: Hyprland.toplevels.values
-        TitleBar {
-            required property var modelData
-            targetWindow: modelData
-            appSettings: barSettings
-        }
-    }
-    Variants {
         model: Quickshell.screens
         DesktopMenu {
             appSettings: barSettings
@@ -370,13 +361,6 @@ ShellRoot {
         repeat: true
         running: Hyprland.toplevels.values.length > 0
         onTriggered: Hyprland.refreshToplevels()
-    }
-    IpcHandler {
-        target: "windowActions"
-        function status(): string {
-            var windows = windowControls.instances.map(bar => bar.status())
-            return JSON.stringify(Object.assign({}, windows.find(w => w.focused) || {visible: false}, {windows: windows}))
-        }
     }
     IpcHandler {
         target: "expander"
