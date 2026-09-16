@@ -50,141 +50,161 @@ Item {
             rotation: 22
         }
 
-        Rectangle {
-            width: parent.width
-            height: 58
-            color: Qt.rgba(canvas.primary.r, canvas.primary.g, canvas.primary.b, canvas.barOpacity)
-            Rectangle {
-                anchors.fill: parent
-                color: "transparent"
-                border.color: Qt.rgba(canvas.accentCol.r, canvas.accentCol.g, canvas.accentCol.b, 0.7)
-                border.width: canvas.value("borderWidth", 1)
-            }
-            Row {
-                anchors.centerIn: parent
-                spacing: 8
-                Repeater {
-                    model: ["firefox", "dolphin", "steam"]
-                    Rectangle {
-                        required property string modelData
-                        width: 36
-                        height: 38
-                        radius: 7
-                        color: canvas.secondary
-                        border.color: Qt.rgba(canvas.accentCol.r, canvas.accentCol.g, canvas.accentCol.b, 0.6)
-                        border.width: canvas.value("borderWidth", 1)
-                        ThemedIcon {
-                            anchors.fill: parent
-                            anchors.margins: 4
-                            source: canvas.appSettings.icon(modelData)
-                            fillMode: Image.PreserveAspectFit
-                            tintEnabled: canvas.tintIcons
-                            tintColor: canvas.energy
-                        }
-                    }
-                }
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "12:34"
-                    color: canvas.ink
-                    font.pixelSize: 14
-                    style: canvas.textStyle
-                    styleColor: canvas.outline
-                }
-            }
-        }
-
-        Rectangle {
-            x: 12
-            y: 82
-            width: parent.width - 24
-            height: Math.max(60, parent.height - 82 - 92 - 30)
-            radius: canvas.borderRadius
-            color: canvas.primary
-            border.color: Qt.rgba(canvas.accentCol.r, canvas.accentCol.g, canvas.accentCol.b, 0.7)
-            border.width: canvas.value("borderWidth", 1)
-            Column {
-                anchors.fill: parent
-                anchors.margins: 12
-                spacing: 9
-                Text {
-                    text: "Applications"
-                    color: canvas.ink
-                    font.pixelSize: 17
-                    font.bold: true
-                    style: canvas.textStyle
-                    styleColor: canvas.outline
-                }
-                Rectangle {
-                    width: parent.width
-                    height: 28
-                    radius: 5
-                    color: canvas.secondary
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Search applications"
-                        color: canvas.ink
-                        font.pixelSize: 12
-                        style: canvas.textStyle
-                        styleColor: canvas.outline
-                    }
-                }
-                Rectangle {
-                    width: parent.width
-                    height: 30
-                    radius: canvas.borderRadius
-                    color: canvas.tertiary
-                    border.color: Qt.rgba(canvas.accentCol.r, canvas.accentCol.g, canvas.accentCol.b, 0.7)
-                    border.width: canvas.value("borderWidth", 1)
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Selected / hover state"
-                        color: canvas.ink
-                        font.pixelSize: 12
-                        style: canvas.textStyle
-                        styleColor: canvas.outline
-                    }
-                }
-                Text {
-                    width: parent.width
-                    text: "Text color and outline sample"
-                    color: canvas.ink
-                    font.pixelSize: 12
-                    wrapMode: Text.Wrap
-                    style: canvas.textStyle
-                    styleColor: canvas.outline
-                }
-            }
-        }
-
-        Rectangle {
-            x: 12
-            height: 84
+        ColumnLayout {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.topMargin: 6
             anchors.bottom: parent.bottom
             anchors.bottomMargin: canvas.swatchRoles.length > 0 ? 34 : 8
-            width: parent.width - 24
-            radius: canvas.borderRadius
-            color: canvas.primary
-            border.color: Qt.rgba(canvas.accentCol.r, canvas.accentCol.g, canvas.accentCol.b, 0.7)
-            border.width: canvas.value("borderWidth", 1)
-            Column {
-                anchors.fill: parent
-                anchors.margins: 12
-                spacing: 7
-                Text {
-                    text: "DESCRIPTION"
-                    color: canvas.energy
-                    font.bold: true
-                    font.pixelSize: 12
-                    style: canvas.textStyle
-                    styleColor: canvas.outline
+            spacing: 8
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 52
+                Layout.minimumHeight: 44
+                radius: canvas.borderRadius
+                color: Qt.rgba(canvas.primary.r, canvas.primary.g, canvas.primary.b, canvas.barOpacity)
+                border.color: Qt.rgba(canvas.accentCol.r, canvas.accentCol.g, canvas.accentCol.b, 0.7)
+                border.width: canvas.value("borderWidth", 1)
+                Row {
+                    anchors.centerIn: parent
+                    spacing: 8
+                    Repeater {
+                        model: ["firefox", "dolphin", "steam"]
+                        Rectangle {
+                            required property string modelData
+                            width: 34
+                            height: 36
+                            radius: 7
+                            color: canvas.secondary
+                            border.color: Qt.rgba(canvas.accentCol.r, canvas.accentCol.g, canvas.accentCol.b, 0.6)
+                            border.width: canvas.value("borderWidth", 1)
+                            ThemedIcon {
+                                anchors.fill: parent
+                                anchors.margins: 4
+                                source: canvas.appSettings.icon(modelData)
+                                fillMode: Image.PreserveAspectFit
+                                tintEnabled: canvas.tintIcons
+                                tintColor: canvas.energy
+                            }
+                        }
+                    }
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "12:34"
+                        color: canvas.ink
+                        font.pixelSize: 14
+                        style: canvas.textStyle
+                        styleColor: canvas.outline
+                    }
                 }
-                Text {
-                    width: parent.width
-                    text: "Subtitle color preview · hover hint"
-                    color: canvas.subtitle
-                    font.pixelSize: 12
-                    wrapMode: Text.Wrap
+            }
+
+            Rectangle {
+                id: launcherCard
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.minimumHeight: 30
+                Layout.preferredHeight: 70
+                radius: canvas.borderRadius
+                clip: true
+                color: canvas.primary
+                border.color: Qt.rgba(canvas.accentCol.r, canvas.accentCol.g, canvas.accentCol.b, 0.7)
+                border.width: canvas.value("borderWidth", 1)
+                Column {
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    spacing: 7
+                    Text {
+                        text: "Applications"
+                        color: canvas.ink
+                        font.pixelSize: 17
+                        font.bold: true
+                        style: canvas.textStyle
+                        styleColor: canvas.outline
+                    }
+                    Rectangle {
+                        width: parent.width
+                        height: 26
+                        radius: 5
+                        color: canvas.secondary
+                        Text {
+                            anchors.centerIn: parent
+                            text: "Search applications"
+                            color: canvas.ink
+                            font.pixelSize: 12
+                            style: canvas.textStyle
+                            styleColor: canvas.outline
+                        }
+                    }
+                    Rectangle {
+                        width: parent.width
+                        height: 28
+                        radius: canvas.borderRadius
+                        color: canvas.tertiary
+                        border.color: Qt.rgba(canvas.accentCol.r, canvas.accentCol.g, canvas.accentCol.b, 0.7)
+                        border.width: canvas.value("borderWidth", 1)
+                        Text {
+                            anchors.centerIn: parent
+                            text: "Selected / hover state"
+                            color: canvas.ink
+                            font.pixelSize: 12
+                            style: canvas.textStyle
+                            styleColor: canvas.outline
+                        }
+                    }
+                    Text {
+                        width: parent.width
+                        text: "Text color and outline sample"
+                        color: canvas.ink
+                        font.pixelSize: 12
+                        wrapMode: Text.Wrap
+                        style: canvas.textStyle
+                        styleColor: canvas.outline
+                    }
+                }
+            }
+
+            Rectangle {
+                id: descCard
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.max(0, Math.min(84, canvas.height - 6 - (canvas.swatchRoles.length > 0 ? 34 : 8) - 52 - 16 - 30))
+                Layout.minimumHeight: 0
+                visible: descCard.height >= 36
+                radius: canvas.borderRadius
+                clip: true
+                color: canvas.primary
+                border.color: Qt.rgba(canvas.accentCol.r, canvas.accentCol.g, canvas.accentCol.b, 0.7)
+                border.width: canvas.value("borderWidth", 1)
+                Column {
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    spacing: 6
+                    Text {
+                        text: "DESCRIPTION"
+                        color: canvas.energy
+                        font.bold: true
+                        font.pixelSize: 12
+                        style: canvas.textStyle
+                        styleColor: canvas.outline
+                    }
+                    Text {
+                        width: parent.width
+                        text: "Application / element preview"
+                        color: canvas.ink
+                        font.pixelSize: 11
+                        wrapMode: Text.Wrap
+                        style: canvas.textStyle
+                        styleColor: canvas.outline
+                    }
+                    Text {
+                        width: parent.width
+                        text: "Subtitle color preview · hover hint"
+                        color: canvas.subtitle
+                        font.pixelSize: 11
+                        wrapMode: Text.Wrap
+                    }
                 }
             }
         }
