@@ -8,8 +8,8 @@ FloatingWindow {
     id: settingsWindow
     DesktopEscapeShortcut { onClosing: colorPage.flushHistory() }
     title: "Customization Center"
-    implicitWidth: 1000
-    implicitHeight: 850
+    width: 1000
+    height: 850
     visible: false
     required property var appSettings
     required property var presetStore
@@ -155,7 +155,10 @@ FloatingWindow {
         spacing: 12
         RowLayout {
             Layout.fillWidth: true
-            StyledText { text: "Customization Center"; color: settingsWindow.appSettings.textColor; font.pixelSize: 26; font.bold: true; Layout.fillWidth: true }
+            spacing: 14
+            Rectangle { width: 46; height: 2; color: settingsWindow.draftTheme.accentColor || "#cba6f7" }
+            StyledText { text: "CUSTOMIZATION CENTER"; color: settingsWindow.appSettings.textColor; font.pixelSize: 21; font.bold: true; font.letterSpacing: 2 }
+            Rectangle { Layout.fillWidth: true; height: 2; color: settingsWindow.draftTheme.accentColor || "#cba6f7"; opacity: 0.5 }
             ExpanderButton {
                 text: "All sections"
                 visible: settingsWindow.view !== "overview"
@@ -167,7 +170,21 @@ FloatingWindow {
                 onClicked: settingsWindow.showDesktopPresets()
             }
         }
-        StyledText { Layout.fillWidth: true; text: settingsWindow.subtitle; color: settingsWindow.appSettings.mutedColor; font.pixelSize: 16 }
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 20
+            Text {
+                Layout.fillWidth: true
+                text: "> " + settingsWindow.subtitle.toUpperCase()
+                color: settingsWindow.appSettings.mutedColor
+                font.pixelSize: 11
+                font.letterSpacing: 1.2
+                elide: Text.ElideRight
+            }
+            Text { text: "MODULES 06"; color: settingsWindow.draftTheme.accentColor || "#cba6f7"; font.pixelSize: 11; font.letterSpacing: 1.2 }
+            Text { text: "BAR A" + Math.round(settingsWindow.draftOpacity * 100) + "%"; color: settingsWindow.appSettings.mutedColor; font.pixelSize: 11; font.letterSpacing: 1.2 }
+            Text { text: "WIN A" + Math.round(settingsWindow.draftCenterOpacity * 100) + "%"; color: settingsWindow.appSettings.mutedColor; font.pixelSize: 11; font.letterSpacing: 1.2 }
+        }
 
         Item {
             Layout.fillWidth: true
@@ -179,15 +196,20 @@ FloatingWindow {
                 anchors.fill: parent
                 clip: true
                 visible: settingsWindow.view === "overview"
-                ColumnLayout {
+                GridLayout {
                     width: overviewScroll.availableWidth
-                    spacing: 14
-                    SectionCard {
+                    columns: 2
+                    columnSpacing: 14
+                    rowSpacing: 14
+
+                    HudPanel {
+                        Layout.columnSpan: 2
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 230
+                        Layout.preferredHeight: 242
+                        number: "00"
                         title: "Live desktop preview"
-                        description: "The whole look on one screen — translucent bar, windows and popouts. Open Colors & Theme to edit."
-                        previewHeight: 170
+                        description: "Whole look on one screen — translucent bar, windows and popouts · open to edit live"
+                        previewHeight: 180
                         onClicked: settingsWindow.go("colors")
                         ThemePreviewCanvas {
                             anchors.fill: parent
@@ -198,61 +220,65 @@ FloatingWindow {
                             barOpacity: settingsWindow.draftOpacity
                         }
                     }
-                    SectionCard {
+                    HudPanel {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 190
+                        Layout.preferredHeight: 152
+                        number: "01"
                         title: "Colors & Theme"
-                        description: "Surfaces, Energy accents, text, borders and corners. Match the wallpaper or pick fast presets."
+                        description: "Surfaces, Energy accents, text, borders and corners"
                         onClicked: settingsWindow.go("colors")
                         Row {
                             anchors.centerIn: parent
                             spacing: 10
-                            Rectangle { width: 52; height: 52; radius: 10; color: settingsWindow.draftTheme.surfaceColor || "#1e1e2e"; border.color: Qt.rgba(0,0,0,.5); border.width: 1 }
-                            Rectangle { width: 52; height: 52; radius: 10; color: settingsWindow.draftTheme.secondaryColor || "#313244"; border.color: Qt.rgba(0,0,0,.5); border.width: 1 }
-                            Rectangle { width: 52; height: 52; radius: 10; color: settingsWindow.draftTheme.accentColor || "#cba6f7"; border.color: Qt.rgba(0,0,0,.5); border.width: 1 }
-                            Rectangle { width: 52; height: 52; radius: 10; color: settingsWindow.draftTheme.textColor || "#cdd6f4"; border.color: Qt.rgba(0,0,0,.5); border.width: 1 }
+                            Rectangle { width: 44; height: 44; radius: 3; color: settingsWindow.draftTheme.surfaceColor || "#1e1e2e"; border.color: Qt.rgba(1,1,1,.2); border.width: 1 }
+                            Rectangle { width: 44; height: 44; radius: 3; color: settingsWindow.draftTheme.secondaryColor || "#313244"; border.color: Qt.rgba(1,1,1,.2); border.width: 1 }
+                            Rectangle { width: 44; height: 44; radius: 3; color: settingsWindow.draftTheme.accentColor || "#cba6f7"; border.color: Qt.rgba(1,1,1,.2); border.width: 1 }
+                            Rectangle { width: 44; height: 44; radius: 3; color: settingsWindow.draftTheme.textColor || "#cdd6f4"; border.color: Qt.rgba(1,1,1,.2); border.width: 1 }
                         }
                     }
-                    SectionCard {
+                    HudPanel {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 190
+                        Layout.preferredHeight: 152
+                        number: "02"
                         title: "Icons"
-                        description: "Override any button's icon."
+                        description: "Override any button icon"
                         onClicked: settingsWindow.go("icons")
                         ThemedIcon {
                             anchors.centerIn: parent
-                            width: 48; height: 48
+                            width: 44; height: 44
                             source: settingsWindow.appSettings.icon("firefox")
                             fillMode: Image.PreserveAspectFit
                             tintEnabled: settingsWindow.draftTint
                             tintColor: settingsWindow.draftTheme.accentColor || "#cba6f7"
                         }
                     }
-                    SectionCard {
+                    HudPanel {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 190
+                        Layout.preferredHeight: 152
+                        number: "03"
                         title: "Descriptions & Popouts"
-                        description: "The hover descriptions, their size, box width and border."
+                        description: "Hover descriptions, box size and border"
                         onClicked: settingsWindow.go("descriptions")
                         Rectangle {
                             anchors.centerIn: parent
-                            width: 150; height: 56; radius: 10
+                            width: 150; height: 44; radius: 3
                             color: settingsWindow.draftTheme.surfaceColor || "#1e1e2e"
                             border.color: settingsWindow.draftTheme.detailAccentColor || "#89b4fa"
                             border.width: 1
                             Column {
                                 anchors.centerIn: parent
-                                spacing: 4
-                                StyledText { text: "DESCRIPTION"; color: settingsWindow.draftTheme.accentColor || "#cba6f7"; font.pixelSize: 10; font.bold: true; anchors.horizontalCenter: parent.horizontalCenter }
-                                StyledText { text: "hover hint text sample"; color: settingsWindow.draftTheme.mutedColor || "#a6adc8"; font.pixelSize: 11; anchors.horizontalCenter: parent.horizontalCenter }
+                                spacing: 3
+                                StyledText { text: "DESCRIPTION"; color: settingsWindow.draftTheme.accentColor || "#cba6f7"; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1; anchors.horizontalCenter: parent.horizontalCenter }
+                                StyledText { text: "hover hint text sample"; color: settingsWindow.draftTheme.mutedColor || "#a6adc8"; font.pixelSize: 10; anchors.horizontalCenter: parent.horizontalCenter }
                             }
                         }
                     }
-                    SectionCard {
+                    HudPanel {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 190
+                        Layout.preferredHeight: 152
+                        number: "04"
                         title: "Presets & Colorways"
-                        description: "Desktop presets and colorways, saved and reloaded as a whole look."
+                        description: "Saved whole-look presets"
                         onClicked: settingsWindow.go("presets")
                         Row {
                             anchors.centerIn: parent
@@ -261,30 +287,31 @@ FloatingWindow {
                                 model: settingsWindow.appSettings.colorPresets.slice(0, 3)
                                 Rectangle {
                                     required property var modelData
-                                    width: 44; height: 60; radius: 8
+                                    width: 36; height: 46; radius: 3
                                     color: modelData.theme.surfaceColor || "#1e1e2e"
-                                    border.color: Qt.rgba(0,0,0,.5); border.width: 1
+                                    border.color: Qt.rgba(1,1,1,.2); border.width: 1
                                     Rectangle {
                                         anchors.horizontalCenter: parent.horizontalCenter
-                                        y: 8; width: 28; height: 28; radius: 5
+                                        y: 8; width: 22; height: 22; radius: 2
                                         color: modelData.theme.accentColor || "#cba6f7"
                                     }
                                 }
                             }
                         }
                     }
-                    SectionCard {
+                    HudPanel {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 190
+                        Layout.preferredHeight: 152
+                        number: "05"
                         title: "Opacity & Layers"
-                        description: "Bar panels and this window's translucency."
+                        description: "Bar panels and this window translucency"
                         onClicked: settingsWindow.go("opacity")
-                        Column {
+                        Row {
                             anchors.centerIn: parent
-                            spacing: 6
-                            Rectangle { width: 120; height: 22; radius: 6; color: settingsWindow.surfaceRgba(0.88); border.color: Qt.rgba(0,0,0,.5); border.width: 1 }
-                            Rectangle { width: 120; height: 22; radius: 6; color: settingsWindow.surfaceRgba(0.55); border.color: Qt.rgba(0,0,0,.5); border.width: 1 }
-                            Rectangle { width: 120; height: 22; radius: 6; color: settingsWindow.surfaceRgba(0.3); border.color: Qt.rgba(0,0,0,.5); border.width: 1 }
+                            spacing: 10
+                            Rectangle { width: 66; height: 18; radius: 2; color: settingsWindow.surfaceRgba(0.88); border.color: Qt.rgba(1,1,1,.2); border.width: 1 }
+                            Rectangle { width: 66; height: 18; radius: 2; color: settingsWindow.surfaceRgba(0.55); border.color: Qt.rgba(1,1,1,.2); border.width: 1 }
+                            Rectangle { width: 66; height: 18; radius: 2; color: settingsWindow.surfaceRgba(0.3); border.color: Qt.rgba(1,1,1,.2); border.width: 1 }
                         }
                     }
                 }

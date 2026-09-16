@@ -31,6 +31,7 @@ StyledText 1.0 StyledText.qml
 SystemPill 1.0 SystemPill.qml
 Taskbar 1.0 Taskbar.qml
 ThemeBorder 1.0 ThemeBorder.qml
+ThemePreviewCanvas 1.0 ThemePreviewCanvas.qml
 ThemedIcon 1.0 ThemedIcon.qml
 TitleBar 1.0 TitleBar.qml
 TrayPill 1.0 TrayPill.qml
@@ -38,5 +39,4 @@ WallpaperPicker 1.0 WallpaperPicker.qml
 WallpaperPresetEditor 1.0 WallpaperPresetEditor.qml
 WorkspaceLayout 1.0 WorkspaceLayout.qml
 Workspaces 1.0 Workspaces.qml
-SectionCard 1.0 SectionCard.qml
-ThemePreviewCanvas 1.0 ThemePreviewCanvas.qml
+HudPanel 1.0 HudPanel.qml

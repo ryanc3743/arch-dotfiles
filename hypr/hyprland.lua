@@ -99,7 +99,7 @@ end
 
 hl.window_rule({
     name = "desktop-dialogs",
-    match = { class = "org.quickshell", title = "(Wallpaper Picker|Bar settings|Applications|Expander Power|Audio outputs|Network & Bluetooth)" },
+    match = { class = "org.quickshell", title = "(Wallpaper Picker|Bar settings|Customization Center|Applications|Expander Power|Audio outputs|Network & Bluetooth)" },
     float = true,
 })
 
