@@ -300,8 +300,9 @@ ShellRoot {
         DesktopEscapeShortcut {}
         id: wallpaperWindow
         title: "Wallpaper Picker"
-        implicitWidth: 1000
-        implicitHeight: 700
+        width: 1000
+        height: 750
+        color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, barSettings.centerOpacity)
         visible: false
         WallpaperPicker { id: wallpaperView; appSettings: barSettings; presetStore: presetStore }
     }

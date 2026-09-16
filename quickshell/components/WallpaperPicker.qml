@@ -9,8 +9,7 @@ Rectangle {
     ThemeBorder { z: 20 }
     anchors.fill: parent
 
-    color: Theme.choose("#151515", "primary")
-    radius: 12
+    id: picker
 
     property var wallpapers: []
     property bool fitOnly: true
@@ -27,7 +26,6 @@ Rectangle {
     property string selectedOutput: "DP-2"
 
     function capture(path) { picker.grabToImage(r => r.saveToFile(path)) }
-    id: picker
     property var appSettings
     required property var presetStore
     property bool editingPresets: false
@@ -119,9 +117,9 @@ Rectangle {
             property int intervalChoice: 3
             property int target: 0
         }
-        onLoaded: Qt.callLater(() => { picker.slideStateReady = true })
-        onLoadFailed: picker.slideStateReady = true
-        onAdapterUpdated: if (picker.slideStateReady) slideSave.restart()
+        onLoaded: Qt.callLater(() => { slideStateReady = true })
+        onLoadFailed: slideStateReady = true
+        onAdapterUpdated: if (slideStateReady) slideSave.restart()
     }
     Timer { id: slideSave; interval: 200; onTriggered: slideStorage.writeAdapter() }
     function startSlideshow() {
@@ -141,7 +139,7 @@ Rectangle {
     Timer {
         id: slideTimer
         interval: [10000,30000,60000,300000,900000,1800000][slideshowInterval.currentIndex]
-        running: picker.slideshowActive && picker.slideStateReady && picker.wallpaperRestored
+        running: picker.slideshowActive && slideStateReady && picker.wallpaperRestored
         repeat: true
         onTriggered: picker.advanceSlide()
     }
@@ -205,172 +203,230 @@ Rectangle {
         store: picker.presetStore
         onCloseRequested: picker.editingPresets = false
     }
+
     ColumnLayout {
         visible: !picker.editingPresets
         anchors.fill: parent
         anchors.margins: 24
-
-        spacing: 16
+        spacing: 14
 
         /*
-            Header
+            Title bar
         */
         RowLayout {
             Layout.fillWidth: true
-
+            spacing: 14
+            Rectangle { width: 46; height: 2; color: Theme.energy }
             StyledText {
-                text: "Wallpaper Picker"
-
-                color: Theme.choose("white", "text")
-
-                font.pixelSize: 24
+                text: "WALLPAPER PICKER"
+                color: Theme.text
+                font.pixelSize: 21
                 font.bold: true
-
-                Layout.fillWidth: true
+                font.letterSpacing: 2
             }
-
+            Rectangle { Layout.fillWidth: true; height: 2; color: Theme.energy; opacity: 0.5 }
             ExpanderButton { text: "Presets"; onClicked: picker.showPresets() }
-
-            StyledText {
-                text: selectedOutput
-
-                color: Theme.choose("#d4af37", "energy")
-
-                font.pixelSize: 14
-                font.bold: true
-            }
         }
 
         /*
-            Monitor tabs
+            Subline + readouts
         */
         RowLayout {
             Layout.fillWidth: true
+            spacing: 20
+            StyledText {
+                Layout.fillWidth: true
+                text: "> " + (listWallpapers.running ? "WALLPAPER CATALOGUE"
+                    : picker.selectedImage ? picker.selectedOutput + " SET FROM CURRENT GALLERY"
+                    : "PICK OR SPAN A WALLPAPER PER MONITOR").toString()
+                color: Theme.muted
+                font.pixelSize: 11
+                font.letterSpacing: 1.2
+                elide: Text.ElideRight
+            }
+            Text { text: "OUTPUTS " + picker.outputs.length; color: Theme.energy; font.pixelSize: 11; font.letterSpacing: 1.2 }
+            Text { text: "IMG " + picker.filteredWallpapers.length; color: Theme.muted; font.pixelSize: 11; font.letterSpacing: 1.2 }
+            Text { text: "QUAL " + picker.tolerance + "PX"; color: Theme.muted; font.pixelSize: 11; font.letterSpacing: 1.2 }
+        }
 
-            spacing: 8
-
-            Repeater {
-                model: [
-                    {
-                        name: "DP-3",
-                        label: "Left"
-                    },
-                    {
-                        name: "DP-2",
-                        label: "Center"
-                    },
-                    {
-                        name: "HDMI-A-1",
-                        label: "Right"
-                    }
-                ]
-
-                Rectangle {
-                    required property var modelData
-
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 42
-
-                    radius: 8
-
-                    color: selectedOutput === modelData.name
-                           ? Theme.choose("#d4af37", "energy")
-                           : Theme.choose("#252525", "secondary")
-
-                    border.width: 1
-
-                    border.color: selectedOutput === modelData.name
-                                  ? Theme.choose("#f0d878", "energy")
-                                  : Theme.choose("#444444", "secondary")
-
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: 120
+        /*
+            Monitor selection
+        */
+        HudSection {
+            Layout.fillWidth: true
+            number: "01"
+            title: "Monitors"
+            description: "The tab selects the target output. Apply repeats it, Span stretches it across every surface."
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                Repeater {
+                    model: picker.outputs
+                    Rectangle {
+                        required property string modelData
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 42
+                        radius: 3
+                        color: picker.selectedOutput === modelData
+                               ? Qt.rgba(0, 0, 0, 0.44)
+                               : Qt.rgba(0, 0, 0, 0.2)
+                        border.width: 1
+                        border.color: picker.selectedOutput === modelData
+                                      ? Qt.rgba(Theme.energy.r, Theme.energy.g, Theme.energy.b, 0.6)
+                                      : Qt.rgba(1, 1, 1, 0.08)
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                        Behavior on border.color { ColorAnimation { duration: 120 } }
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 14
+                            y: 0
+                            width: picker.selectedOutput === modelData ? parent.width - 28 : 0
+                            height: 2
+                            color: Theme.energy
+                            opacity: 0.9
+                            Behavior on width { NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
                         }
-                    }
-
-                    Column {
-                        anchors.centerIn: parent
-
-                        spacing: 1
-
-                        StyledText {
-                            anchors.horizontalCenter: parent.horizontalCenter
-
-                            text: modelData.label
-
-                            color: selectedOutput === modelData.name
-                                   ? Theme.choose("#151515", "primary")
-                                   : Theme.choose("white", "text")
-
-                            font.pixelSize: 13
-                            font.bold: true
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 1
+                            StyledText {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: modelData.toUpperCase()
+                                color: picker.selectedOutput === modelData ? Theme.energy : Theme.text
+                                font.pixelSize: 12
+                                font.bold: true
+                                font.letterSpacing: 1.6
+                            }
+                            StyledText {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: picker.selectedOutput === modelData ? "TARGET" : "OUTPUT"
+                                color: picker.selectedOutput === modelData ? Theme.text : Theme.muted
+                                font.pixelSize: 8
+                                font.letterSpacing: 1.2
+                            }
                         }
-
-                        StyledText {
-                            anchors.horizontalCenter: parent.horizontalCenter
-
-                            text: modelData.name
-
-                            color: selectedOutput === modelData.name
-                                   ? "#302800"
-                                   : Theme.choose("#888888", "muted")
-
-                            font.pixelSize: 9
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-
-                        onClicked: {
-                            selectedOutput = modelData.name
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: picker.selectedOutput = modelData
                         }
                     }
                 }
             }
         }
 
-        RowLayout {
+        /*
+            Apply + filter
+        */
+        HudSection {
             Layout.fillWidth: true
-            Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Apply to each monitor"; enabled: picker.selectedImage !== "" && !setWallpaper.running; onClicked: picker.apply(picker.selectedImage, "all") }
-            Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Span across all monitors"; enabled: picker.selectedImage !== "" && !setWallpaper.running; onClicked: picker.apply(picker.selectedImage, "span") }
-        }
-        StyledLabel { Layout.fillWidth: true; wrapMode: Text.WordWrap; text: "Click an image to apply it to the selected monitor. Then use a button above to repeat or span it across all displays."; color: Theme.text }
-        StyledLabel { Layout.fillWidth: true; wrapMode: Text.Wrap; visible: picker.failure !== ""; text: picker.failure; color: "#f38ba8" }
-        RowLayout {
-            Layout.fillWidth: true
-            ComboBox { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary;
-                model: ["Fits this monitor", "All images"]
-                onActivated: picker.fitOnly = currentIndex === 0
-            }
-            StyledLabel { text: "Tolerance"; color: Theme.text }
-            ComboBox { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary;
-                model: ["±200 px", "±300 px", "±400 px"]
-                currentIndex: 2
-                onActivated: picker.tolerance = 200 + currentIndex * 100
-            }
-            Item { Layout.fillWidth: true }
-            StyledLabel { text: picker.targetWidth + " × " + picker.targetHeight + "  ·  " + picker.filteredWallpapers.length + " images"; color: Theme.muted }
-        }
-        StyledLabel {
-            visible: listWallpapers.running || picker.filteredWallpapers.length === 0
-            text: listWallpapers.running ? "Checking image dimensions…" : "No matching images. Choose All images to browse wallpapers for cropping or spanning."
-            color: Theme.muted; Layout.fillWidth: true; wrapMode: Text.Wrap
-        }
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 100
-            radius: 8; color: Theme.secondary
+            number: "02"
+            title: "Apply"
+            description: picker.selectedImage ? (picker.selectedImage.split("/").pop() + " ready.") : "Click a thumbnail to arm it, then repeat or span."
             ColumnLayout {
-                anchors.fill: parent; anchors.margins: 10; spacing: 6
+                Layout.fillWidth: true
+                spacing: 8
                 RowLayout {
-                    StyledLabel { text: "Slideshow"; font.bold: true; color: Theme.text }
-                    ComboBox { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; id: slideshowOrder; currentIndex: slideState.order; onActivated: slideState.order = currentIndex; model: ["In picker order","Random"] }
-                    ComboBox { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; id: slideshowInterval; model: ["10 seconds","30 seconds","1 minute","5 minutes","15 minutes","30 minutes"]; currentIndex: slideState.intervalChoice; onActivated: slideState.intervalChoice = currentIndex }
-                    ComboBox { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; id: slideshowTarget; currentIndex: slideState.target; onActivated: slideState.target = currentIndex; model: ["Selected monitor","Each monitor","Span all monitors"]; enabled: !picker.slideshowActive }
+                    Layout.fillWidth: true
+                    spacing: 8
+                    ExpanderButton {
+                        text: "Apply to each monitor"
+                        enabled: picker.selectedImage !== "" && !setWallpaper.running
+                        onClicked: picker.apply(picker.selectedImage, "all")
+                    }
+                    ExpanderButton {
+                        text: "Span across monitors"
+                        enabled: picker.selectedImage !== "" && !setWallpaper.running
+                        onClicked: picker.apply(picker.selectedImage, "span")
+                    }
                     Item { Layout.fillWidth: true }
-                    Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary;
+                    ComboBox {
+                        model: ["FITS THIS MONITOR", "ALL IMAGES"]
+                        currentIndex: picker.fitOnly ? 0 : 1
+                        onActivated: picker.fitOnly = currentIndex === 0
+                        palette.window: Theme.primary; palette.base: Theme.secondary
+                        palette.button: Theme.secondary; palette.text: Theme.text
+                        palette.buttonText: Theme.text; palette.windowText: Theme.text
+                        palette.highlight: Theme.energy; palette.highlightedText: Theme.primary
+                    }
+                    StyledLabel { text: "Tolerance"; color: Theme.muted }
+                    ComboBox {
+                        model: ["±200", "±300", "±400"]
+                        currentIndex: Math.floor((picker.tolerance - 200) / 100)
+                        onActivated: picker.tolerance = 200 + currentIndex * 100
+                        palette.window: Theme.primary; palette.base: Theme.secondary
+                        palette.button: Theme.secondary; palette.text: Theme.text
+                        palette.buttonText: Theme.text; palette.windowText: Theme.text
+                        palette.highlight: Theme.energy; palette.highlightedText: Theme.primary
+                    }
+                    Item { width: 4 }
+                    StyledText {
+                        text: picker.targetWidth + "×" + picker.targetHeight
+                        color: Theme.muted
+                        font.pixelSize: 11
+                        font.letterSpacing: 1
+                    }
+                }
+                StyledLabel {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    visible: picker.failure !== ""
+                    text: picker.failure
+                    color: "#f38ba8"
+                }
+            }
+        }
+
+        /*
+            Slideshow
+        */
+        HudSection {
+            Layout.fillWidth: true
+            number: "03"
+            title: "Slideshow"
+            description: picker.slideshowActive
+                ? "Playing " + picker.slideshowImages.length + " images · keeps playing when this window closes."
+                : "Start uses the images currently shown below. Stop and restart to use a different filter or monitor."
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    ComboBox {
+                        id: slideshowOrder
+                        currentIndex: slideState.order
+                        onActivated: slideState.order = currentIndex
+                        model: ["IN PICKER ORDER", "RANDOM"]
+                        palette.window: Theme.primary; palette.base: Theme.secondary
+                        palette.button: Theme.secondary; palette.text: Theme.text
+                        palette.buttonText: Theme.text; palette.windowText: Theme.text
+                        palette.highlight: Theme.energy; palette.highlightedText: Theme.primary
+                    }
+                    ComboBox {
+                        id: slideshowInterval
+                        model: ["10 SEC", "30 SEC", "1 MIN", "5 MIN", "15 MIN", "30 MIN"]
+                        currentIndex: slideState.intervalChoice
+                        onActivated: slideState.intervalChoice = currentIndex
+                        palette.window: Theme.primary; palette.base: Theme.secondary
+                        palette.button: Theme.secondary; palette.text: Theme.text
+                        palette.buttonText: Theme.text; palette.windowText: Theme.text
+                        palette.highlight: Theme.energy; palette.highlightedText: Theme.primary
+                    }
+                    ComboBox {
+                        id: slideshowTarget
+                        currentIndex: slideState.target
+                        onActivated: slideState.target = currentIndex
+                        model: ["SELECTED MONITOR", "EACH MONITOR", "SPAN ALL"]
+                        enabled: !picker.slideshowActive
+                        palette.window: Theme.primary; palette.base: Theme.secondary
+                        palette.button: Theme.secondary; palette.text: Theme.text
+                        palette.buttonText: Theme.text; palette.windowText: Theme.text
+                        palette.highlight: Theme.energy; palette.highlightedText: Theme.primary
+                    }
+                    Item { Layout.fillWidth: true }
+                    ExpanderButton {
                         text: picker.slideshowActive ? "Stop" : "Start"
                         enabled: picker.slideshowActive || (picker.filteredWallpapers.length > 0 && !setWallpaper.running && !restore.running)
                         onClicked: {
@@ -378,118 +434,91 @@ Rectangle {
                             else picker.startSlideshow()
                         }
                     }
-                    Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Next"; enabled: picker.slideshowActive && !setWallpaper.running; onClicked: { picker.advanceSlide(); slideTimer.restart() } }
-                }
-                StyledLabel {
-                    Layout.fillWidth: true; wrapMode: Text.Wrap; color: Theme.muted
-                    text: picker.slideshowActive
-                        ? "Playing " + picker.slideshowImages.length + " images · " + (picker.slideshowMode === "selected" ? picker.slideshowOutput : picker.slideshowMode === "all" ? "each monitor" : "spanning all monitors") + " · keeps playing when this window closes."
-                        : "Start uses the images currently shown below. Stop and restart to use a different filter or monitor."
+                    ExpanderButton {
+                        text: "Next"
+                        enabled: picker.slideshowActive && !setWallpaper.running
+                        onClicked: { picker.advanceSlide(); slideTimer.restart() }
+                    }
                 }
             }
         }
+
         /*
             Wallpaper gallery
         */
-        GridView {
-            id: wallpaperGrid
-
+        HudSection {
             Layout.fillWidth: true
             Layout.fillHeight: true
-
-            clip: true
-
-            model: picker.filteredWallpapers
-
-            cellWidth: (width - 18) / Math.max(1, Math.floor((width - 18) / 220))
-            cellHeight: 180
-            ScrollBar.vertical: ScrollBar {
-                policy: ScrollBar.AlwaysOn
-                width: 12
-                contentItem: Rectangle { implicitWidth: 10; radius: 5; color: parent.pressed ? Theme.text : Theme.energy }
-            }
-
-            /*
-                Allow free scrolling rather than snapping between rows.
-            */
-            snapMode: GridView.NoSnap
-
-            /*
-                More aggressive scrolling/momentum.
-            */
-            maximumFlickVelocity: 5000
-            flickDeceleration: 700
-
-            boundsBehavior: Flickable.StopAtBounds
-
-            cacheBuffer: 1000
-
-            delegate: Rectangle {
-                id: wallpaperTile
-
-                required property var modelData
-
-                width: wallpaperGrid.cellWidth - 12
-                height: wallpaperGrid.cellHeight - 12
-
-                radius: 8
-
-                color: mouseArea.containsMouse
-                       ? Theme.choose("#d4af37", "energy")
-                       : Theme.choose("#252525", "secondary")
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 120
-                    }
+            fills: true
+            number: "04"
+            title: "Gallery"
+            status: (picker.targetWidth + "×" + picker.targetHeight) + " · " + picker.filteredWallpapers.length + "/" + picker.wallpapers.length
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                spacing: 6
+                StyledLabel {
+                    Layout.fillWidth: true
+                    visible: listWallpapers.running || picker.filteredWallpapers.length === 0
+                    text: listWallpapers.running ? "CHECKING IMAGE DIMENSIONS…" : "NO MATCHING IMAGES — SWITCH FILTER TO ALL IMAGES."
+                    color: Theme.muted
+                    font.pixelSize: 10
+                    font.letterSpacing: 1.2
                 }
-
-                Image {
-                    anchors.fill: parent
-
-                    anchors.margins: 4
-
-                    source: "file://" + wallpaperTile.modelData.path
-
-                    fillMode: Image.PreserveAspectCrop
-
-                    asynchronous: true
-                    cache: true
-
-                    opacity: mouseArea.containsMouse
-                             ? 0.45
-                             : 1.0
-
-                    Behavior on opacity {
-                        NumberAnimation {
-                            duration: 120
+                GridView {
+                    id: wallpaperGrid
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    model: picker.filteredWallpapers
+                    cellWidth: (width - 18) / Math.max(1, Math.floor((width - 18) / 200))
+                    cellHeight: 150
+                    ScrollBar.vertical: ScrollBar {
+                        policy: ScrollBar.AlwaysOn
+                        width: 12
+                        contentItem: Rectangle { implicitWidth: 10; radius: 5; color: parent.pressed ? Theme.text : Theme.energy }
+                    }
+                    snapMode: GridView.NoSnap
+                    maximumFlickVelocity: 5000
+                    flickDeceleration: 700
+                    boundsBehavior: Flickable.StopAtBounds
+                    cacheBuffer: 1000
+                    delegate: Rectangle {
+                        id: wallpaperTile
+                        required property var modelData
+                        width: wallpaperGrid.cellWidth - 12
+                        height: wallpaperGrid.cellHeight - 12
+                        radius: 3
+                        color: Qt.rgba(0, 0, 0, 0.24)
+                        border.width: mouseArea.containsMouse ? 1 : 1
+                        border.color: mouseArea.containsMouse
+                                     ? Qt.rgba(Theme.energy.r, Theme.energy.g, Theme.energy.b, 0.6)
+                                     : Qt.rgba(1, 1, 1, 0.1)
+                        Behavior on border.color { ColorAnimation { duration: 120 } }
+                        Image {
+                            anchors.fill: parent
+                            anchors.margins: 4
+                            source: "file://" + wallpaperTile.modelData.path
+                            fillMode: Image.PreserveAspectCrop
+                            asynchronous: true
+                            cache: true
+                            opacity: mouseArea.containsMouse ? 0.55 : 1
+                            Behavior on opacity { NumberAnimation { duration: 120 } }
+                        }
+                        Rectangle {
+                            anchors.left: parent.left; anchors.bottom: parent.bottom; anchors.margins: 4
+                            width: dimensions.implicitWidth + 12; height: 22; color: "#cc101018"; radius: 3
+                            StyledText { id: dimensions; anchors.centerIn: parent; text: wallpaperTile.modelData.width + " × " + wallpaperTile.modelData.height; color: "#ffffff"; font.pixelSize: 10 }
+                        }
+                        MouseArea {
+                            id: mouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: { picker.slideshowActive = false; picker.apply(wallpaperTile.modelData.path, "selected") }
                         }
                     }
                 }
-
-                Rectangle {
-                    anchors.left: parent.left; anchors.bottom: parent.bottom; anchors.margins: 4
-                    width: dimensions.implicitWidth + 12; height: 23; color: "#cc101018"; radius: 3
-                    StyledText { id: dimensions; anchors.centerIn: parent; text: wallpaperTile.modelData.width + " × " + wallpaperTile.modelData.height; color: "#ffffff"; font.pixelSize: 11 }
-                }
-                MouseArea {
-                    id: mouseArea
-
-                    anchors.fill: parent
-
-                    hoverEnabled: true
-
-                    onClicked: { picker.slideshowActive = false; picker.apply(wallpaperTile.modelData.path, "selected") }
-                }
             }
-
-            /*
-                Custom wheel handling.
-
-                Normal mouse wheels usually send 120 angleDelta units
-                per click. We translate that into a much larger pixel
-                movement and also give the GridView a flick velocity.
-            */
         }
     }
 }

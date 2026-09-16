@@ -39,3 +39,4 @@ WallpaperPresetEditor 1.0 WallpaperPresetEditor.qml
 WorkspaceLayout 1.0 WorkspaceLayout.qml
 Workspaces 1.0 Workspaces.qml
 HudPanel 1.0 HudPanel.qml
+HudSection 1.0 HudSection.qml
