@@ -20,7 +20,7 @@ Rectangle {
     readonly property string overviewHelper: Qt.resolvedUrl("../scripts/overview.sh").toString().replace(/^file:\/\//, "")
     readonly property bool calculating: /^calc(?:\s|$)/.test(query.trim())
     readonly property bool quickAction: ["ss", "ssf", "cl", "ssh", "emoji", "pm"].includes(query.trim())
-    readonly property var allApps: DesktopEntries.applications.values.filter(app => !app.noDisplay)
+    readonly property var allApps: DesktopEntries.applications.values.filter(app => !app.noDisplay).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
     readonly property var apps: calculating || quickAction ? [] : allApps.filter(app =>
         (app.name + " " + app.genericName + " " + app.comment + " " + (app.keywords || []).join(" ")).toLowerCase().includes(query.trim().toLowerCase()))
     readonly property var windows: Hyprland.toplevels.values.filter(w =>

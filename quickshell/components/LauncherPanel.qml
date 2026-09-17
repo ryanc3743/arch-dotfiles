@@ -11,7 +11,7 @@ Rectangle {
     implicitWidth: 720
     implicitHeight: 620
     property string query: ""
-    readonly property var allApps: DesktopEntries.applications.values.filter(app => !app.noDisplay)
+    readonly property var allApps: DesktopEntries.applications.values.filter(app => !app.noDisplay).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
     readonly property var apps: allApps.filter(app => {
         if (!panel.query.trim()) return true
         var needle = panel.query.toLowerCase()
