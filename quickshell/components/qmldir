@@ -34,6 +34,7 @@ ThemeBorder 1.0 ThemeBorder.qml
 ThemePreviewCanvas 1.0 ThemePreviewCanvas.qml
 ThemedIcon 1.0 ThemedIcon.qml
 TrayPill 1.0 TrayPill.qml
+ScreenColorPicker 1.0 ScreenColorPicker.qml
 WallpaperGallery 1.0 WallpaperGallery.qml
 WallpaperPicker 1.0 WallpaperPicker.qml
 WallpaperPresetEditor 1.0 WallpaperPresetEditor.qml

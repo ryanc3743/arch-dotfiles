@@ -70,6 +70,7 @@ Rectangle {
     signal accepted(color value)
     signal canceled()
     signal roleRequested(string key, string label)
+    signal screenPickRequested()
     color: Theme.primary
     function preview(key) { return key === roleKey ? selectedColor : (previewTheme[key] || "#313244") }
     ColumnLayout {
@@ -170,6 +171,11 @@ Rectangle {
             }
         }
         Item { Layout.fillHeight: true }
+        HudTag {
+            Layout.alignment: Qt.AlignHCenter
+            text: "PICK FROM SCREEN"
+            onClicked: page.screenPickRequested()
+        }
         RowLayout {
             Button { palette.window: Theme.primary; palette.base: Theme.secondary; palette.placeholderText: Theme.muted; palette.button: Theme.secondary; palette.text: Theme.text; palette.buttonText: Theme.text; palette.windowText: Theme.text; palette.highlight: Theme.accent; palette.highlightedText: Theme.primary; text: "Back"; onClicked: { page.flushHistory(); page.canceled() } }
             Item { Layout.fillWidth: true }

@@ -1,6 +1,7 @@
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
+import Quickshell.Wayland
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -390,6 +391,71 @@ ShellRoot {
         appSettings: barSettings
         presetStore: presetStore
         wallpaperController: wallpaperView
+        onScreenPickRequested: {
+            pickerWindow.arm()
+            settingsWindow.visible = false
+        }
+    }
+    // Fullscreen surface color picker. Captures the output via grim while this
+    // window is NOT yet mapped (so the frozen frame never contains our overlay),
+    // then shows the frame once the capture lands (armed()).
+    PanelWindow {
+        DesktopEscapeShortcut { onClosing: pickerWindow.cancelPick() }
+        id: pickerWindow
+        visible: false
+        anchors { top: true; bottom: true; left: true; right: true }
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.namespace: "screen-color-picker"
+        // Freeze the monitor the Customization Center actually lives on (its
+        // `screen` property is static and can name the wrong output).
+        function targetScreen() {
+            var w = Hyprland.toplevels.values.find(t => t.title === settingsWindow.title)
+            var at = w && w.lastIpcObject ? w.lastIpcObject.at : null
+            if (at) {
+                for (var i = 0; i < Quickshell.screens.length; ++i) {
+                    var s = Quickshell.screens[i]
+                    if (at[0] >= s.x && at[0] < s.x + s.width && at[1] >= s.y && at[1] < s.y + s.height) return s
+                }
+            }
+            return settingsWindow.screen || Quickshell.screens[0]
+        }
+        function reset() { pickerView.disarm(); pickerView.pickedHex = "#000000" }
+        // Call while the CC is still mapped so its toplevel can be located.
+        function arm() {
+            pickerWindow.screen = targetScreen()
+            reset()
+            pickerView.outputName = pickerWindow.screen ? pickerWindow.screen.name : "DP-2"
+            armDelay.restart()
+        }
+        Timer {
+            id: armDelay
+            interval: 150
+            repeat: false
+            onTriggered: pickerView.arm()
+        }
+        function cancelPick() {
+            if (!pickerWindow.visible && !pickerView.busy) return
+            pickerWindow.visible = false
+            pickerView.disarm()
+            settingsWindow.visible = true
+            desktop.focusWhenMapped(settingsWindow.title)
+        }
+        ScreenColorPicker {
+            id: pickerView
+            anchors.fill: parent
+            outputName: "DP-2"
+            onArmed: pickerWindow.visible = true
+            onCanceled: pickerWindow.cancelPick()
+            onPicked: hex => {
+                pickerWindow.visible = false
+                pickerView.disarm()
+                settingsWindow.visible = true
+                settingsWindow.acceptScreenPick(hex)
+                desktop.focusWhenMapped(settingsWindow.title)
+            }
+        }
     }
     FloatingWindow {
         DesktopEscapeShortcut {}
@@ -434,6 +500,18 @@ ShellRoot {
         function capture(path: string): void { launcherView.grabToImage(result => result.saveToFile(path)) }
     }
     // Also permits testing the same actions used by the buttons without key injection.
+    IpcHandler {
+        target: "colorpicker"
+        function open() {
+            pickerWindow.arm()
+            settingsWindow.visible = false
+        }
+        function capture(path: string): void {
+            if (pickerWindow.visible) pickerView.grabToImage(r => r.saveToFile(path))
+        }
+        function hide(): void { pickerWindow.cancelPick() }
+        function status(): string { return JSON.stringify({visible: pickerWindow.visible, live: pickerView.live, busy: pickerView.busy, output: pickerView.outputName, hex: pickerView.pickedHex}) }
+    }
     IpcHandler {
         target: "appearance"
         function colorways(): void { settingsWindow.showColorways() }

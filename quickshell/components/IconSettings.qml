@@ -24,6 +24,16 @@ FloatingWindow {
     function surfaceRgba(alpha) { return Qt.rgba(windowBase.r, windowBase.g, windowBase.b, alpha) }
     color: Qt.rgba(windowBase.r, windowBase.g, windowBase.b, settingsWindow.draftCenterOpacity)
 
+    signal screenPickRequested()
+    function acceptScreenPick(hex) {
+        if (!settingsWindow.pickingColor) return
+        colorPage.flushHistory()
+        colorPage.selectedColor = hex
+        colorPage.hue = Math.max(0, colorPage.selectedColor.hsvHue)
+        var next = Object.assign({}, settingsWindow.draftTheme)
+        next[settingsWindow.selectedRole] = hex
+        settingsWindow.draftTheme = next
+    }
     function sectionSubtitle() {
         if (view === "overview") return "Pick a module to customize."
         if (view === "colors") return settingsWindow.editingColorway ? "Editing colorway: " + settingsWindow.editingColorway + " · Save colorway to keep your edits." : "Surfaces, Energy accents, text and borders — previewed live."
@@ -655,6 +665,7 @@ FloatingWindow {
             colorPage.hue = Math.max(0,colorPage.selectedColor.hsvHue)
         }
         onCanceled: settingsWindow.pickingColor = false
+        onScreenPickRequested: settingsWindow.screenPickRequested()
         onAccepted: value => {
             var next = Object.assign({}, settingsWindow.draftTheme)
             next[settingsWindow.selectedRole] = value.toString()
