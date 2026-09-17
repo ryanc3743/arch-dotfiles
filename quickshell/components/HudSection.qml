@@ -10,6 +10,14 @@ Rectangle {
     property string status: ""
     property bool fills: false
 
+    /* A plain Rectangle reports no implicit size, so inside a ColumnLayout
+       these sections used to collapse to ~0px and every control piled into
+       the top strip. Give them a real content-derived height unless they
+       are told to expand and fill the remaining space (e.g. the gallery). */
+    implicitHeight: section.fills ? 0 : Math.max(host.implicitHeight + 84, 150)
+    Layout.fillHeight: section.fills ? true : false
+    Layout.minimumHeight: section.fills ? 0 : 140
+
     radius: 3
     color: Qt.rgba(0, 0, 0, 0.32)
     border.color: Qt.rgba(1, 1, 1, 0.1)
@@ -29,10 +37,11 @@ Rectangle {
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 14
-        anchors.topMargin: 18
-        spacing: 10
+        anchors.topMargin: 22
+        spacing: 12
         RowLayout {
             Layout.fillWidth: true
+            Layout.alignment: Qt.AlignBaseline
             spacing: 10
             Text {
                 text: section.number

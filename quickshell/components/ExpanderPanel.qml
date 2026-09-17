@@ -82,7 +82,7 @@ Rectangle {
         spacing: 12
         RowLayout {
             Layout.fillWidth: true
-            StyledText { text: "Expander"; color: Theme.text; font.pixelSize: 25; font.bold: true; Layout.fillWidth: true }
+            StyledText { text: "Dashboard Center"; color: Theme.text; font.pixelSize: 25; font.bold: true; Layout.fillWidth: true }
             ExpanderButton { text: "Launcher"; highlighted: panel.tab === 0; onClicked: { panel.tab = 0; search.forceActiveFocus() } }
             ExpanderButton { text: "Overview"; highlighted: panel.tab === 1; onClicked: { panel.tab = 1; Hyprland.refreshToplevels() } }
             ExpanderButton { text: "×"; Accessible.name: "Close Expander"; onClicked: panel.closeRequested() }
