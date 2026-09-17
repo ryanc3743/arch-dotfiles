@@ -170,6 +170,7 @@ Rectangle {
         }
         stderr: StdioCollector { onStreamFinished: if (text.trim()) picker.failure = text.trim() }
     }
+    readonly property bool catalogRunning: listWallpapers.running
 
     /*
         Apply a wallpaper to the currently selected monitor.
