@@ -451,8 +451,8 @@ ShellRoot {
             onPicked: hex => {
                 pickerWindow.visible = false
                 pickerView.disarm()
-                settingsWindow.visible = true
                 settingsWindow.acceptScreenPick(hex)
+                settingsWindow.visible = true
                 desktop.focusWhenMapped(settingsWindow.title)
             }
         }

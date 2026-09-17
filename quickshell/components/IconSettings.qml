@@ -26,7 +26,17 @@ FloatingWindow {
 
     signal screenPickRequested()
     function acceptScreenPick(hex) {
-        if (!settingsWindow.pickingColor) return
+        // The CC re-hides itself while the picker runs; when it is shown again,
+        // onVisibleChanged resets pickingColor + draftTheme from the saved
+        // settings. Stash the pick so that reset can reapply it after mapping.
+        settingsWindow.pendingPick = hex
+    }
+    property string pendingPick: ""
+    function consumePendingPick() {
+        if (settingsWindow.pendingPick === "") return
+        var hex = settingsWindow.pendingPick
+        settingsWindow.pendingPick = ""
+        settingsWindow.pickingColor = true
         colorPage.flushHistory()
         colorPage.selectedColor = hex
         colorPage.hue = Math.max(0, colorPage.selectedColor.hsvHue)
@@ -133,7 +143,17 @@ FloatingWindow {
     property real draftOpacity: 0.88
     property var draftDisplay: ({ popupFontSize: 12, popupMaxWidth: 300, popupBorderWidth: 2 })
 
-    onVisibleChanged: if (visible) {
+    property bool _lastVisible: false
+    onVisibleChanged: {
+        if (visible) {
+            // FloatingWindow can emit visibleChanged twice per show (property
+            // set + actual map). Reset draft state only on the first one.
+            if (_lastVisible) return
+            _lastVisible = true
+        } else {
+            _lastVisible = false
+            return
+        }
         pickingColor = false
         savingTheme = false
         editingColorway = ""
@@ -150,6 +170,7 @@ FloatingWindow {
         draftTheme = { tertiaryColor: appSettings.tertiaryColor, detailAccentColor: appSettings.detailAccentColor, textOutlineColor: appSettings.textOutlineColor, textStyle: appSettings.textStyle, borderStyle: appSettings.borderStyle, borderWidth: appSettings.borderWidth, borderRadius: appSettings.borderRadius, secondaryColor: appSettings.secondaryColor, surfaceColor: appSettings.surfaceColor, accentColor: appSettings.accentColor, textColor: appSettings.textColor, mutedColor: appSettings.mutedColor }
         draftOpacity = appSettings.panelOpacity
         draftDisplay = { popupFontSize: appSettings.popupFontSize, popupMaxWidth: appSettings.popupMaxWidth, popupBorderWidth: appSettings.popupBorderWidth }
+        settingsWindow.consumePendingPick()
     }
     onClosed: colorPage.flushHistory()
     Connections {
