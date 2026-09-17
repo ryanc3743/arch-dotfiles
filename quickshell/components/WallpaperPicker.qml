@@ -459,6 +459,7 @@ Rectangle {
             number: "04"
             title: "Gallery"
             status: (picker.targetWidth + "×" + picker.targetHeight) + " · " + picker.filteredWallpapers.length + "/" + picker.wallpapers.length
+            headerAction: HudTag { text: "GALLERY →"; colorWay: HudTag.Gold; onClicked: picker.editingGallery = true }
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true

@@ -9,6 +9,7 @@ Rectangle {
     property string description: ""
     property string status: ""
     property bool fills: false
+    property Item headerAction: null
 
     /* A plain Rectangle reports no implicit size, so inside a ColumnLayout
        these sections used to collapse to ~0px and every control piled into
@@ -40,6 +41,7 @@ Rectangle {
         anchors.topMargin: 22
         spacing: 12
         RowLayout {
+            id: headerRow
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignBaseline
             spacing: 10
@@ -114,5 +116,10 @@ Rectangle {
             ctx.stroke()
         }
         antialiasing: true
+    }
+    onHeaderActionChanged: if (section.headerAction) {
+        var act = section.headerAction
+        act.parent = headerRow
+        act.Layout.alignment = Qt.AlignRight
     }
 }

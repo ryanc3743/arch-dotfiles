@@ -518,6 +518,7 @@ ShellRoot {
         function wallpaperCapture(path: string): void { wallpaperView.capture(path) }
         function wallpaperPresets(): void { wallpaperWindow.visible = true; wallpaperView.showPresets(); desktop.focusWhenMapped(wallpaperWindow.title) }
         function open(): void { desktop.activate("settings") }
+        function wallpaper(): void { wallpaperWindow.visible = true; wallpaperView.editingGallery = false; desktop.focusWhenMapped(wallpaperWindow.title) }
         function picker(): void { settingsWindow.previewPicker() }
         function capture(path: string): void { settingsWindow.capture(path) }
         function hide(): void { settingsWindow.visible = false }
