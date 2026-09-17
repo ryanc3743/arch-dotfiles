@@ -42,7 +42,7 @@ Rectangle {
             if (result && !result.startsWith("Error:") && !calculator.running)
                 Quickshell.execDetached([helper, "copy", result])
         } else if (quickAction) runAction(query.trim())
-        else if (apps.length) { apps[0].execute(); closeRequested() }
+        else if (apps.length) { launchApp(apps[0]); closeRequested() }
     }
     function focusWindow(window) {
         var address = window.address
@@ -53,6 +53,13 @@ Rectangle {
         if (!app || !app.icon) return "image://icon/application-x-executable"
         if (app.icon.startsWith("/") || app.icon.startsWith("file:")) return app.icon.startsWith("/") ? "file://" + app.icon : app.icon
         return "image://icon/" + app.icon
+    }
+    function launchApp(app) {
+        if (!app) return
+        // DesktopEntry.execute() crashes Chromium-based flatpaks (zypak SIGSEGV)
+        // when spawned from the systemd service; route via Hyprland instead.
+        var args = app.command.map(a => "'" + a.replace(/'/g, "'\\''") + "'").join(" ")
+        Hyprland.dispatch("hl.dsp.exec_cmd('" + args.replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "')")
     }
     onQueryChanged: { result = ""; calculationDelay.restart() }
     Timer { id: hints; interval: 3000; onTriggered: panel.hintVisible = false }
@@ -117,7 +124,7 @@ Rectangle {
             delegate: ExpanderButton {
                 required property var modelData
                 width: appGrid.cellWidth - 10; height: 92
-                onClicked: { modelData.execute(); panel.closeRequested() }
+                onClicked: { panel.launchApp(modelData); panel.closeRequested() }
                 contentItem: Column {
                     spacing: 5
                     ThemedIcon { source: panel.iconSource(modelData); sourceSize: Qt.size(36, 36); width: 40; height: 40; anchors.horizontalCenter: parent.horizontalCenter; fillMode: Image.PreserveAspectFit }
