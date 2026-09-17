@@ -41,7 +41,9 @@ Rectangle {
             StyledText {
                 Layout.alignment: Qt.AlignRight
                 text: picker.selectedOutput + " · " + (picker.fitOnly ? "FITS " + picker.targetWidth + "×" + picker.targetHeight : "FULL")
+                    + (picker.selectedImage ? " · ARMED " + picker.selectedImage.split("/").pop() : "")
                 color: Theme.muted; font.pixelSize: 10; font.letterSpacing: 1.2
+                elide: Text.ElideRight
             }
         }
 
@@ -70,17 +72,19 @@ Rectangle {
                     height: galleryGrid.cellHeight - 10
                     radius: 4
                     color: Qt.rgba(0, 0, 0, 0.12)
-                    border.width: 1
-                    border.color: hoverArea.containsMouse
-                                  ? Qt.rgba(Theme.energy.r, Theme.energy.g, Theme.energy.b, 0.6)
-                                  : Qt.rgba(0, 0, 0, 0.15)
+                    border.width: picker.selectedImage === tile.modelData.path ? 2 : 1
+                    border.color: picker.selectedImage === tile.modelData.path
+                                  ? Qt.rgba(Theme.energy.r, Theme.energy.g, Theme.energy.b, 0.95)
+                                  : hoverArea.containsMouse
+                                    ? Qt.rgba(Theme.energy.r, Theme.energy.g, Theme.energy.b, 0.6)
+                                    : Qt.rgba(0, 0, 0, 0.15)
                     Behavior on border.color { ColorAnimation { duration: 110 } }
                     Image {
                         anchors.fill: parent; anchors.margins: 5
                         source: "file://" + tile.modelData.path
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true; cache: true
-                        opacity: hoverArea.containsMouse ? 0.55 : 1
+                        opacity: (picker.selectedImage === tile.modelData.path) ? 1 : hoverArea.containsMouse ? 0.62 : 1
                         Behavior on opacity { NumberAnimation { duration: 110 } }
                     }
                     StyledLabel {
@@ -88,8 +92,22 @@ Rectangle {
                         text: tile.modelData.width + " × " + tile.modelData.height
                         color: Theme.energy; font.pixelSize: 9; font.letterSpacing: 1.1
                     }
+                    Rectangle {
+                        id: setBadge
+                        anchors.left: parent.left; anchors.top: parent.top; anchors.margins: 6
+                        visible: picker.selectedImage === tile.modelData.path
+                        width: setBadgeLabel.implicitWidth + 12; height: 20
+                        color: "#d8d80a71"; radius: 3
+                        StyledText {
+                            id: setBadgeLabel
+                            anchors.centerIn: parent
+                            text: "SET → " + picker.selectedOutput.toUpperCase()
+                            color: "#ffffff"; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1
+                        }
+                    }
                     MouseArea { id: hoverArea; anchors.fill: parent; hoverEnabled: true
-                        onClicked: { picker.apply(tile.modelData.path, "selected") }
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: { picker.slideshowActive = false; picker.apply(tile.modelData.path, "selected") }
                     }
                 }
             }
@@ -113,10 +131,15 @@ Rectangle {
             spacing: 10
             HudTag { text: "← BACK TO PICKER"; colorWay: HudTag.Gold; onClicked: gallery.picker.editingGallery = false }
             Item { Layout.fillWidth: true }
-            HudTag { text: "MATCHES MONITOR SIZE ONLY" ; colorWay: HudTag.Gold; visible: picker.fitOnly
-                onClicked: { picker.fitOnly = false } }
-            HudTag { text: "ALL IMAGES"; colorWay: HudTag.Gold; visible: !picker.fitOnly
-                onClicked: { picker.fitOnly = true } }
+            Repeater {
+                model: picker.outputs
+                HudTag {
+                    required property string modelData
+                    text: (picker.selectedOutput === modelData ? "TARGET " : "SET ") + modelData.toUpperCase()
+                    colorWay: HudTag.Gold
+                    onClicked: picker.selectedOutput = modelData
+                }
+            }
         }
     }
 }

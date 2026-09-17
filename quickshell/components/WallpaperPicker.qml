@@ -19,9 +19,6 @@ Rectangle {
     readonly property int targetHeight: monitorScreen ? Math.round(monitorScreen.height * monitorScreen.devicePixelRatio) : (selectedOutput === "DP-3" ? 1920 : selectedOutput === "DP-2" ? 1440 : 1080)
     readonly property var filteredWallpapers: wallpapers.filter(image => !fitOnly ||
         (image.width > 0 && image.height > 0 && Math.abs(image.width - targetWidth) <= tolerance && Math.abs(image.height - targetHeight) <= tolerance))
-    onSelectedOutputChanged: wallpaperGrid.positionViewAtBeginning()
-    onToleranceChanged: wallpaperGrid.positionViewAtBeginning()
-    onFitOnlyChanged: wallpaperGrid.positionViewAtBeginning()
 
     property string selectedOutput: "DP-2"
 
@@ -330,7 +327,7 @@ Rectangle {
             Layout.fillWidth: true
             number: "02"
             title: "Apply"
-            description: picker.selectedImage ? (picker.selectedImage.split("/").pop() + " ready.") : "Click a thumbnail to arm it, then repeat or span."
+            description: picker.selectedImage ? (picker.selectedImage.split("/").pop() + " armed.") : "Open the gallery (04) and click a tile to arm it, then repeat or span."
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 8
@@ -394,7 +391,7 @@ Rectangle {
             title: "Slideshow"
             description: picker.slideshowActive
                 ? "Playing " + picker.slideshowImages.length + " images · keeps playing when this window closes."
-                : "Start uses the images currently shown below. Stop and restart to use a different filter or monitor."
+                : "Start plays the filtered library on the selected target. Stop and restart to use a different filter or monitor."
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 8
@@ -451,79 +448,64 @@ Rectangle {
         }
 
         /*
-            Wallpaper gallery
+            Library entry — full grid lives in the separate gallery screen
         */
         HudSection {
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            fills: true
             number: "04"
-            title: "Gallery"
+            title: "Library"
+            description: picker.selectedImage
+                ? (picker.selectedImage.split("/").pop() + " armed · apply to " + picker.selectedOutput + " below.")
+                : "Open the full library (GALLERY →) and click a tile to apply it to the selected monitor."
             status: (picker.targetWidth + "×" + picker.targetHeight) + " · " + picker.filteredWallpapers.length + "/" + picker.wallpapers.length
             headerAction: HudTag { text: "GALLERY →"; colorWay: HudTag.Gold; onClicked: picker.editingGallery = true }
-            ColumnLayout {
+            RowLayout {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
-                spacing: 6
-                StyledLabel {
-                    Layout.fillWidth: true
-                    visible: listWallpapers.running || picker.filteredWallpapers.length === 0
-                    text: listWallpapers.running ? "CHECKING IMAGE DIMENSIONS…" : "NO MATCHING IMAGES — SWITCH FILTER TO ALL IMAGES."
-                    color: Theme.muted
-                    font.pixelSize: 10
-                    font.letterSpacing: 1.2
-                }
-                GridView {
-                    id: wallpaperGrid
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    clip: true
-                    model: picker.filteredWallpapers
-                    cellWidth: (width - 18) / Math.max(1, Math.floor((width - 18) / 200))
-                    cellHeight: 150
-                    ScrollBar.vertical: ScrollBar {
-                        policy: ScrollBar.AlwaysOn
-                        width: 12
-                        contentItem: Rectangle { implicitWidth: 10; radius: 5; color: parent.pressed ? Theme.text : Theme.energy }
+                spacing: 12
+                Rectangle {
+                    Layout.preferredWidth: 84
+                    Layout.preferredHeight: 48
+                    radius: 3
+                    color: Qt.rgba(0, 0, 0, 0.24)
+                    border.width: 1
+                    border.color: Qt.rgba(1, 1, 1, 0.1)
+                    Image {
+                        anchors.fill: parent
+                        anchors.margins: 3
+                        source: picker.selectedImage ? "file://" + picker.selectedImage : ""
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
                     }
-                    snapMode: GridView.NoSnap
-                    maximumFlickVelocity: 5000
-                    flickDeceleration: 700
-                    boundsBehavior: Flickable.StopAtBounds
-                    cacheBuffer: 1000
-                    delegate: Rectangle {
-                        id: wallpaperTile
-                        required property var modelData
-                        width: wallpaperGrid.cellWidth - 12
-                        height: wallpaperGrid.cellHeight - 12
-                        radius: 3
-                        color: Qt.rgba(0, 0, 0, 0.24)
-                        border.width: mouseArea.containsMouse ? 1 : 1
-                        border.color: mouseArea.containsMouse
-                                     ? Qt.rgba(Theme.energy.r, Theme.energy.g, Theme.energy.b, 0.6)
-                                     : Qt.rgba(1, 1, 1, 0.1)
-                        Behavior on border.color { ColorAnimation { duration: 120 } }
-                        Image {
-                            anchors.fill: parent
-                            anchors.margins: 4
-                            source: "file://" + wallpaperTile.modelData.path
-                            fillMode: Image.PreserveAspectCrop
-                            asynchronous: true
-                            cache: true
-                            opacity: mouseArea.containsMouse ? 0.55 : 1
-                            Behavior on opacity { NumberAnimation { duration: 120 } }
-                        }
-                        Rectangle {
-                            anchors.left: parent.left; anchors.bottom: parent.bottom; anchors.margins: 4
-                            width: dimensions.implicitWidth + 12; height: 22; color: "#cc101018"; radius: 3
-                            StyledText { id: dimensions; anchors.centerIn: parent; text: wallpaperTile.modelData.width + " × " + wallpaperTile.modelData.height; color: "#ffffff"; font.pixelSize: 10 }
-                        }
-                        MouseArea {
-                            id: mouseArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            onClicked: { picker.slideshowActive = false; picker.apply(wallpaperTile.modelData.path, "selected") }
-                        }
+                    StyledText {
+                        anchors.centerIn: parent
+                        visible: picker.selectedImage === ""
+                        text: "NO IMAGE ARMED"
+                        color: Theme.muted
+                        font.pixelSize: 9
+                        font.letterSpacing: 1.1
+                    }
+                }
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 3
+                    StyledText {
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                        text: picker.selectedImage
+                            ? (picker.selectedImage.split("/").pop() + " → " + picker.selectedOutput)
+                            : "NO WALLPAPER ARMED"
+                        color: picker.selectedImage ? Theme.energy : Theme.text
+                        font.pixelSize: 12
+                        font.bold: true
+                        font.letterSpacing: 1.2
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                        text: "CLICK A TILE IN THE GALLERY TO SET THE SELECTED MONITOR"
+                        color: Theme.muted
+                        font.pixelSize: 9
+                        font.letterSpacing: 1.1
                     }
                 }
             }
